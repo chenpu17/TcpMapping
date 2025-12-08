@@ -1,17 +1,45 @@
 {
-  "name": "tcp-forward-server",
-  "version": "1.0.0",
-  "description": "一个TCP端口转发服务器，可以将TCP请求转发到后端HTTP服务器",
+  "name": "@chenpu17/tcpmapping",
+  "version": "2.0.0",
+  "description": "TCP端口转发服务器，支持多端口映射、WebUI管理界面和实时连接监控",
   "main": "server.js",
+  "bin": {
+    "tcpmapping": "./bin/tcpmapping.js"
+  },
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
     "setup-password": "node setup-password.js",
     "reset-password": "node setup-password.js"
   },
-  "keywords": ["tcp", "proxy", "forward", "server", "nodejs"],
-  "author": "",
+  "files": [
+    "bin/",
+    "public/",
+    "server.js",
+    "setup-password.js",
+    "config.json"
+  ],
+  "keywords": [
+    "tcp",
+    "proxy",
+    "forward",
+    "port-forward",
+    "port-mapping",
+    "server",
+    "webui",
+    "cli",
+    "nodejs"
+  ],
+  "author": "chenpu17",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chenpu17/TcpMapping.git"
+  },
+  "bugs": {
+    "url": "https://github.com/chenpu17/TcpMapping/issues"
+  },
+  "homepage": "https://github.com/chenpu17/TcpMapping#readme",
   "engines": {
     "node": ">=14.0.0"
   },
@@ -21,4 +49,4 @@
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.2"
   }
-} 
+}
