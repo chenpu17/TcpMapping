@@ -1,7 +1,18 @@
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const bcrypt = require('bcryptjs');
 const readline = require('readline');
+
+// 获取配置保存目录
+function getConfigDir() {
+  // 优先使用环境变量指定的目录
+  if (process.env.TCPMAPPING_DATA_DIR) {
+    return process.env.TCPMAPPING_DATA_DIR;
+  }
+  // 其次使用当前工作目录
+  return process.cwd();
+}
 
 // 创建readline接口
 const rl = readline.createInterface({
@@ -81,7 +92,7 @@ function getPassword(prompt) {
 // 读取现有的认证配置
 function loadAuthConfig() {
   try {
-    const configPath = path.join(__dirname, 'auth-config.json');
+    const configPath = path.join(getConfigDir(), 'auth-config.json');
     const configData = fs.readFileSync(configPath, 'utf8');
     return JSON.parse(configData);
   } catch (error) {
@@ -107,8 +118,14 @@ function loadAuthConfig() {
 
 // 保存认证配置
 function saveAuthConfig(config) {
-  const configPath = path.join(__dirname, 'auth-config.json');
+  const configDir = getConfigDir();
+  // 确保目录存在
+  if (!fs.existsSync(configDir)) {
+    fs.mkdirSync(configDir, { recursive: true });
+  }
+  const configPath = path.join(configDir, 'auth-config.json');
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+  console.log(`配置已保存到: ${configPath}`);
 }
 
 // 主要设置流程

@@ -6,8 +6,9 @@ const fs = require('fs');
 const os = require('os');
 
 const APP_NAME = 'tcpmapping';
-const PID_FILE = path.join(os.tmpdir(), 'tcpmapping.pid');
-const LOG_FILE = path.join(os.tmpdir(), 'tcpmapping.log');
+const DATA_DIR = path.join(os.homedir(), '.tcpmapping');
+const PID_FILE = path.join(DATA_DIR, 'tcpmapping.pid');
+const LOG_FILE = path.join(DATA_DIR, 'tcpmapping.log');
 const SERVER_FILE = path.join(__dirname, '..', 'server.js');
 const SETUP_PASSWORD_FILE = path.join(__dirname, '..', 'setup-password.js');
 
@@ -21,11 +22,52 @@ const colors = {
   red: (text) => `\x1b[31m${text}\x1b[0m`,
   yellow: (text) => `\x1b[33m${text}\x1b[0m`,
   blue: (text) => `\x1b[34m${text}\x1b[0m`,
-  cyan: (text) => `\x1b[36m${text}\x1b[0m`
+  cyan: (text) => `\x1b[36m${text}\x1b[0m`,
+  gray: (text) => `\x1b[90m${text}\x1b[0m`
 };
+
+// 确保数据目录存在
+function ensureDataDir() {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+}
+
+// 获取配置文件路径（按优先级）
+function getConfigPath() {
+  // 优先级1: 当前工作目录
+  const cwdPath = path.join(process.cwd(), 'config.json');
+  if (fs.existsSync(cwdPath)) {
+    return cwdPath;
+  }
+
+  // 优先级2: 用户数据目录
+  const dataPath = path.join(DATA_DIR, 'config.json');
+  if (fs.existsSync(dataPath)) {
+    return dataPath;
+  }
+
+  return null;
+}
+
+// 获取认证配置文件路径
+function getAuthConfigPath() {
+  const cwdPath = path.join(process.cwd(), 'auth-config.json');
+  if (fs.existsSync(cwdPath)) {
+    return cwdPath;
+  }
+
+  const dataPath = path.join(DATA_DIR, 'auth-config.json');
+  if (fs.existsSync(dataPath)) {
+    return dataPath;
+  }
+
+  return null;
+}
 
 // 检查进程是否运行
 function isRunning() {
+  ensureDataDir();
   if (!fs.existsSync(PID_FILE)) {
     return false;
   }
@@ -50,6 +92,17 @@ function start() {
     return;
   }
 
+  // 检查是否已初始化
+  const configPath = getConfigPath();
+  const authPath = getAuthConfigPath();
+
+  if (!authPath) {
+    console.log(colors.yellow('未设置管理员密码，请先运行:'));
+    console.log(colors.cyan('  tcpmapping setup-password'));
+    return;
+  }
+
+  ensureDataDir();
   console.log(colors.blue(`Starting ${APP_NAME}...`));
 
   const out = fs.openSync(LOG_FILE, 'a');
@@ -58,7 +111,7 @@ function start() {
   const child = spawn('node', [SERVER_FILE], {
     detached: true,
     stdio: ['ignore', out, err],
-    cwd: path.dirname(SERVER_FILE)
+    cwd: process.cwd() // 使用当前目录，以便server可以找到当前目录的config
   });
 
   fs.writeFileSync(PID_FILE, child.pid.toString());
@@ -66,7 +119,10 @@ function start() {
 
   console.log(colors.green(`${APP_NAME} started successfully (PID: ${child.pid})`));
   console.log(colors.cyan(`WebUI: http://localhost:9999`));
-  console.log(colors.cyan(`Log file: ${LOG_FILE}`));
+  console.log(colors.gray(`Log file: ${LOG_FILE}`));
+  if (configPath) {
+    console.log(colors.gray(`Config: ${configPath}`));
+  }
 }
 
 // 停止服务
@@ -126,8 +182,14 @@ function restart() {
 // 查看状态
 function status() {
   const pid = isRunning();
+  const configPath = getConfigPath();
+  const authPath = getAuthConfigPath();
+
+  console.log(colors.cyan('=== TcpMapping Status ===\n'));
+
+  // 服务状态
   if (pid) {
-    console.log(colors.green(`${APP_NAME} is running (PID: ${pid})`));
+    console.log(colors.green(`Service: Running (PID: ${pid})`));
 
     // 尝试获取健康状态
     try {
@@ -138,23 +200,36 @@ function status() {
         res.on('end', () => {
           try {
             const health = JSON.parse(data);
-            console.log(colors.cyan(`  Status: ${health.status}`));
-            console.log(colors.cyan(`  Uptime: ${Math.floor(health.uptime / 60)} minutes`));
-            console.log(colors.cyan(`  Active Mappings: ${health.activeMappings}`));
-            console.log(colors.cyan(`  Active Connections: ${health.activeConnections}`));
+            console.log(`  Uptime: ${Math.floor(health.uptime / 60)} minutes`);
+            console.log(`  Active Mappings: ${health.activeMappings}`);
+            console.log(`  Active Connections: ${health.activeConnections}`);
           } catch (e) {}
+          showPaths();
         });
       });
-      req.on('error', () => {});
-      req.on('timeout', () => req.destroy());
-    } catch (e) {}
+      req.on('error', () => showPaths());
+      req.on('timeout', () => { req.destroy(); showPaths(); });
+    } catch (e) {
+      showPaths();
+    }
   } else {
-    console.log(colors.red(`${APP_NAME} is not running`));
+    console.log(colors.red('Service: Stopped'));
+    showPaths();
+  }
+
+  function showPaths() {
+    console.log('');
+    console.log(colors.cyan('=== Configuration ===\n'));
+    console.log(`Data Dir: ${DATA_DIR}`);
+    console.log(`Config: ${configPath || colors.yellow('Not found (run: tcpmapping init)')}`);
+    console.log(`Auth: ${authPath || colors.yellow('Not found (run: tcpmapping setup-password)')}`);
+    console.log(`Log: ${LOG_FILE}`);
   }
 }
 
 // 查看日志
 function logs(follow = false) {
+  ensureDataDir();
   if (!fs.existsSync(LOG_FILE)) {
     console.log(colors.yellow('No log file found'));
     return;
@@ -176,10 +251,15 @@ function logs(follow = false) {
 
 // 设置密码
 function setupPassword() {
+  ensureDataDir();
   console.log(colors.blue('Setting up password...'));
+  console.log(colors.gray(`Config will be saved to: ${DATA_DIR}`));
+  console.log('');
+
   const child = spawn('node', [SETUP_PASSWORD_FILE], {
     stdio: 'inherit',
-    cwd: path.dirname(SETUP_PASSWORD_FILE)
+    cwd: DATA_DIR, // 在数据目录运行，使auth-config.json保存到数据目录
+    env: { ...process.env, TCPMAPPING_DATA_DIR: DATA_DIR }
   });
 
   child.on('exit', (code) => {
@@ -189,29 +269,41 @@ function setupPassword() {
 
 // 初始化配置
 function init() {
-  const configDir = process.cwd();
-  const configFile = path.join(configDir, 'config.json');
+  ensureDataDir();
 
-  if (fs.existsSync(configFile)) {
-    console.log(colors.yellow('config.json already exists'));
+  // 检查当前目录和数据目录是否已有配置
+  const cwdConfig = path.join(process.cwd(), 'config.json');
+  const dataConfig = path.join(DATA_DIR, 'config.json');
+
+  if (fs.existsSync(cwdConfig)) {
+    console.log(colors.yellow(`config.json already exists in current directory`));
+    console.log(colors.gray(`  ${cwdConfig}`));
+    return;
+  }
+
+  if (fs.existsSync(dataConfig)) {
+    console.log(colors.yellow(`config.json already exists in data directory`));
+    console.log(colors.gray(`  ${dataConfig}`));
+    console.log('');
+    console.log('To create a local config, copy it to current directory:');
+    console.log(colors.cyan(`  cp ${dataConfig} ./config.json`));
     return;
   }
 
   const defaultConfig = {
-    mappings: [
-      {
-        name: "Example",
-        listen: { host: "0.0.0.0", port: 8080 },
-        target: { host: "127.0.0.1", port: 3000 }
-      }
-    ],
-    webui: { enabled: true, port: 9999, host: "0.0.0.0" },
-    logging: { enabled: true, level: "info" }
+    mappings: [],
+    webui: { port: 9999 },
+    logging: { level: "info" }
   };
 
-  fs.writeFileSync(configFile, JSON.stringify(defaultConfig, null, 2));
+  // 保存到数据目录
+  fs.writeFileSync(dataConfig, JSON.stringify(defaultConfig, null, 2));
   console.log(colors.green('Created config.json'));
-  console.log(colors.cyan('Edit config.json to configure your port mappings'));
+  console.log(colors.gray(`  ${dataConfig}`));
+  console.log('');
+  console.log('Edit the config file to add your port mappings.');
+  console.log('Or copy it to current directory for project-specific config:');
+  console.log(colors.cyan(`  cp ${dataConfig} ./config.json`));
 }
 
 // 显示版本
@@ -232,7 +324,7 @@ ${colors.yellow('Commands:')}
   ${colors.green('start')}           Start the server in background
   ${colors.green('stop')}            Stop the server
   ${colors.green('restart')}         Restart the server
-  ${colors.green('status')}          Show server status
+  ${colors.green('status')}          Show server status and config paths
   ${colors.green('logs')}            Show recent logs
   ${colors.green('logs -f')}         Follow logs in real-time
   ${colors.green('setup-password')}  Set up admin password
@@ -240,10 +332,15 @@ ${colors.yellow('Commands:')}
   ${colors.green('version')}         Show version
   ${colors.green('help')}            Show this help message
 
+${colors.yellow('Config Paths (priority order):')}
+  1. ./config.json       (current directory - project config)
+  2. ~/.tcpmapping/      (user data directory - global config)
+
 ${colors.yellow('Examples:')}
-  tcpmapping start          # Start server
-  tcpmapping status         # Check if server is running
-  tcpmapping logs -f        # Follow logs
+  tcpmapping init             # Create config file
+  tcpmapping setup-password   # Set admin password
+  tcpmapping start            # Start server
+  tcpmapping status           # Check status and config paths
 
 ${colors.yellow('WebUI:')}
   After starting, visit http://localhost:9999

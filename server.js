@@ -1,10 +1,58 @@
 const net = require('net');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const express = require('express');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const bodyParser = require('body-parser');
+
+// 数据目录 - 用于存储用户配置（持久化）
+const DATA_DIR = path.join(os.homedir(), '.tcpmapping');
+
+// 获取配置文件路径（按优先级搜索）
+function getConfigPath(filename) {
+  // 优先级1: 当前工作目录
+  const cwdPath = path.join(process.cwd(), filename);
+  if (fs.existsSync(cwdPath)) {
+    return cwdPath;
+  }
+
+  // 优先级2: 用户数据目录 (~/.tcpmapping/)
+  const dataPath = path.join(DATA_DIR, filename);
+  if (fs.existsSync(dataPath)) {
+    return dataPath;
+  }
+
+  // 优先级3: 包安装目录（仅作为模板）
+  const pkgPath = path.join(__dirname, filename);
+  if (fs.existsSync(pkgPath)) {
+    return pkgPath;
+  }
+
+  return null;
+}
+
+// 获取配置保存路径
+function getConfigSavePath(filename) {
+  // 如果当前工作目录有配置文件，保存到当前目录
+  const cwdPath = path.join(process.cwd(), filename);
+  if (fs.existsSync(cwdPath)) {
+    return cwdPath;
+  }
+
+  // 否则保存到用户数据目录
+  ensureDataDir();
+  return path.join(DATA_DIR, filename);
+}
+
+// 确保数据目录存在
+function ensureDataDir() {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    console.log(`创建配置目录: ${DATA_DIR}`);
+  }
+}
 
 // 全局变量
 let config = {};
@@ -21,12 +69,16 @@ const loginAttempts = new Map();
 // 加载认证配置
 function loadAuthConfig() {
   try {
-    const authConfigPath = path.join(__dirname, 'auth-config.json');
+    const authConfigPath = getConfigPath('auth-config.json');
+    if (!authConfigPath) {
+      throw new Error('认证配置文件不存在');
+    }
     const authConfigData = fs.readFileSync(authConfigPath, 'utf8');
+    console.log(`加载认证配置: ${authConfigPath}`);
     return JSON.parse(authConfigData);
   } catch (error) {
     console.error('警告: 未找到认证配置文件，使用默认配置');
-    console.error('请运行 "node setup-password.js" 来设置安全密码');
+    console.error('请运行 "tcpmapping setup-password" 或 "npm run setup-password" 来设置安全密码');
     
     // 返回默认配置（仅用于向后兼容）
     return {
@@ -125,15 +177,21 @@ const LOG_LEVELS = {
 // 读取配置文件
 function loadConfig() {
   try {
-    const configPath = path.join(__dirname, 'config.json');
+    const configPath = getConfigPath('config.json');
+    if (!configPath) {
+      console.log('未找到配置文件，使用默认配置');
+      console.log('运行 "tcpmapping init" 创建配置文件');
+      return getDefaultConfig();
+    }
     const configData = fs.readFileSync(configPath, 'utf8');
     const loadedConfig = JSON.parse(configData);
-    
+    console.log(`加载配置文件: ${configPath}`);
+
     // 验证配置
     if (!loadedConfig.mappings || !Array.isArray(loadedConfig.mappings)) {
       loadedConfig.mappings = [];
     }
-    
+
     // 添加默认WebUI配置
     if (!loadedConfig.webui) {
       loadedConfig.webui = {
@@ -142,32 +200,37 @@ function loadConfig() {
         host: '0.0.0.0'
       };
     }
-    
+
     return loadedConfig;
   } catch (error) {
     console.error('读取配置文件失败:', error.message);
-    // 返回默认配置
-    return {
-      mappings: [],
-      webui: {
-        enabled: true,
-        port: 9999,
-        host: '0.0.0.0'
-      },
-      logging: {
-        enabled: true,
-        level: 'info'
-      }
-    };
+    return getDefaultConfig();
   }
+}
+
+// 获取默认配置
+function getDefaultConfig() {
+  return {
+    mappings: [],
+    webui: {
+      enabled: true,
+      port: 9999,
+      host: '0.0.0.0'
+    },
+    logging: {
+      enabled: true,
+      level: 'info'
+    }
+  };
 }
 
 // 保存配置文件
 function saveConfig(newConfig) {
   try {
-    const configPath = path.join(__dirname, 'config.json');
+    const configPath = getConfigSavePath('config.json');
     fs.writeFileSync(configPath, JSON.stringify(newConfig, null, 2));
     config = newConfig;
+    console.log(`配置已保存: ${configPath}`);
     return true;
   } catch (error) {
     console.error('保存配置文件失败:', error.message);
