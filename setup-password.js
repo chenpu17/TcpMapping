@@ -55,36 +55,70 @@ function validatePassword(password) {
 // 获取用户输入（隐藏密码）
 function getPassword(prompt) {
   return new Promise((resolve) => {
-    // 对于密码输入，我们使用标准输入但隐藏输出
+    const rl2 = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+
+    // Windows 兼容：使用简单的输入方式
+    // 在某些终端上密码可能可见，但这是最兼容的方式
+    if (process.platform === 'win32') {
+      // Windows: 尝试隐藏输入
+      const spawn = require('child_process').spawnSync;
+      process.stdout.write(prompt);
+
+      try {
+        // 使用 PowerShell 读取密码
+        const result = spawn('powershell', [
+          '-Command',
+          '$pwd = Read-Host -AsSecureString; [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($pwd))'
+        ], { stdio: ['inherit', 'pipe', 'inherit'] });
+
+        if (result.status === 0 && result.stdout) {
+          resolve(result.stdout.toString().trim());
+          return;
+        }
+      } catch (e) {
+        // PowerShell 不可用，回退到普通输入
+      }
+
+      // 回退方案：普通输入（密码可见）
+      console.log('(密码将可见)');
+      rl2.question('', (answer) => {
+        rl2.close();
+        resolve(answer);
+      });
+      return;
+    }
+
+    // Unix/Mac: 使用 raw mode 隐藏密码
     process.stdout.write(prompt);
     process.stdin.setRawMode(true);
     process.stdin.setEncoding('utf8');
-    
+
     let password = '';
-    
+
     const onData = (char) => {
       if (char === '\n' || char === '\r' || char === '\u0004') {
-        // 结束输入
         process.stdin.setRawMode(false);
         process.stdin.removeListener('data', onData);
+        process.stdin.pause();
         process.stdout.write('\n');
         resolve(password);
       } else if (char === '\u0003') {
-        // Ctrl+C
         process.exit();
-      } else if (char === '\u007f') {
-        // 退格键
+      } else if (char === '\u007f' || char === '\b') {
         if (password.length > 0) {
           password = password.slice(0, -1);
           process.stdout.write('\b \b');
         }
-      } else {
-        // 普通字符
+      } else if (char.charCodeAt(0) >= 32) {
         password += char;
         process.stdout.write('*');
       }
     };
-    
+
+    process.stdin.resume();
     process.stdin.on('data', onData);
   });
 }

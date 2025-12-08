@@ -1,6 +1,6 @@
 {
   "name": "@chenpu17/tcpmapping",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "TCP端口转发服务器，支持多端口映射、WebUI管理界面和实时连接监控",
   "main": "server.js",
   "bin": {
