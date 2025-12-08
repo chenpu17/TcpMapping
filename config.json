@@ -1,0 +1,46 @@
+{
+  "mappings": [
+    {
+      "name": "Dify",
+      "listen": {
+        "host": "0.0.0.0",
+        "port": 5588
+      },
+      "target": {
+        "host": "113.45.34.202",
+        "port": 5588
+      }
+    },
+    {
+      "name": "语音助手",
+      "listen": {
+        "host": "0.0.0.0",
+        "port": 3443
+      },
+      "target": {
+        "host": "115.120.49.208",
+        "port": 443
+      }
+    },
+    {
+      "name": "语音助手",
+      "listen": {
+        "host": "0.0.0.0",
+        "port": 443
+      },
+      "target": {
+        "host": "115.120.49.208",
+        "port": 443
+      }
+    }
+  ],
+  "webui": {
+    "enabled": true,
+    "port": 9999,
+    "host": "0.0.0.0"
+  },
+  "logging": {
+    "enabled": true,
+    "level": "info"
+  }
+}

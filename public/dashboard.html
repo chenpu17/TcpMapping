@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TCP转发服务器 - 管理面板</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 24px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+
+        .card-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-header h2 {
+            color: #333;
+            font-size: 20px;
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            font-size: 32px;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table th,
+        .table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-running {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-stopped {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-connected {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            margin: 10% auto;
+            padding: 2rem;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .modal-header h3 {
+            color: #333;
+        }
+
+        .close {
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .close:hover {
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+
+        .error-message {
+            color: #dc3545;
+            font-size: 14px;
+            margin-top: 0.5rem;
+            display: none;
+        }
+
+        .success-message {
+            color: #28a745;
+            font-size: 14px;
+            margin-top: 0.5rem;
+            display: none;
+        }
+
+        .connection-details {
+            font-size: 12px;
+            color: #666;
+            margin-top: 0.5rem;
+        }
+
+        .refresh-btn {
+            font-size: 12px;
+            padding: 0.25rem 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>TCP转发服务器管理面板</h1>
+        <div class="header-actions">
+            <span>欢迎，管理员</span>
+            <button class="btn btn-danger" onclick="logout()">退出登录</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- 系统状态 -->
+        <div class="card">
+            <div class="card-header">
+                <h2>系统状态</h2>
+                <button class="btn btn-primary refresh-btn" onclick="refreshStatus()">刷新</button>
+            </div>
+            <div class="card-body">
+                <div class="stats-grid" id="statsGrid">
+                    <!-- 状态卡片将通过JavaScript动态生成 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 端口映射管理 -->
+        <div class="card">
+            <div class="card-header">
+                <h2>端口映射管理</h2>
+                <button class="btn btn-success" onclick="showAddMappingModal()">添加映射</button>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>名称</th>
+                            <th>监听端口</th>
+                            <th>目标地址</th>
+                            <th>连接数</th>
+                            <th>流量统计</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mappingsTable">
+                        <!-- 端口映射列表将通过JavaScript动态生成 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 连接状态监控 -->
+        <div class="card">
+            <div class="card-header">
+                <h2>连接状态监控</h2>
+                <button class="btn btn-primary refresh-btn" onclick="refreshConnections()">刷新</button>
+            </div>
+            <div class="card-body">
+                <div id="connectionsDisplay">
+                    <!-- 连接状态将通过JavaScript动态生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加映射模态框 -->
+    <div id="addMappingModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>添加端口映射</h3>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <form id="addMappingForm">
+                <div class="form-group">
+                    <label for="mappingName">映射名称</label>
+                    <input type="text" id="mappingName" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="listenPort">监听端口</label>
+                    <input type="number" id="listenPort" name="listenPort" min="1" max="65535" required>
+                </div>
+                <div class="form-group">
+                    <label for="targetHost">目标主机</label>
+                    <input type="text" id="targetHost" name="targetHost" required>
+                </div>
+                <div class="form-group">
+                    <label for="targetPort">目标端口</label>
+                    <input type="number" id="targetPort" name="targetPort" min="1" max="65535" required>
+                </div>
+                <button type="submit" class="btn btn-success">添加映射</button>
+                <div class="error-message" id="modalErrorMessage"></div>
+                <div class="success-message" id="modalSuccessMessage"></div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let mappings = [];
+        let connections = {};
+        let status = {};
+
+        // 页面加载时初始化数据
+        document.addEventListener('DOMContentLoaded', function() {
+            loadMappings();
+            loadConnections();
+            loadStatus();
+            
+            // 每5秒自动刷新连接状态
+            setInterval(() => {
+                loadConnections();
+                loadStatus();
+            }, 5000);
+        });
+
+        // 加载端口映射
+        async function loadMappings() {
+            try {
+                const response = await fetch('/api/mappings');
+                const data = await response.json();
+                
+                if (data.success) {
+                    mappings = data.data;
+                    renderMappings();
+                }
+            } catch (error) {
+                console.error('加载端口映射失败:', error);
+            }
+        }
+
+        // 加载连接状态
+        async function loadConnections() {
+            try {
+                const response = await fetch('/api/connections');
+                const data = await response.json();
+                
+                if (data.success) {
+                    connections = data.data;
+                    renderConnections();
+                }
+            } catch (error) {
+                console.error('加载连接状态失败:', error);
+            }
+        }
+
+        // 加载系统状态
+        async function loadStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                
+                if (data.success) {
+                    status = data.data;
+                    renderStatus();
+                }
+            } catch (error) {
+                console.error('加载系统状态失败:', error);
+            }
+        }
+
+        // 格式化字节数
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // 渲染端口映射列表
+        function renderMappings() {
+            const tbody = document.getElementById('mappingsTable');
+            tbody.innerHTML = '';
+
+            mappings.forEach((mapping, index) => {
+                const row = document.createElement('tr');
+                const identifier = mapping.id || index;
+                row.innerHTML = `
+                    <td>${mapping.name}</td>
+                    <td>${mapping.listen.host}:${mapping.listen.port}</td>
+                    <td>${mapping.target.host}:${mapping.target.port}</td>
+                    <td><span class="status-badge status-connected">${mapping.connectionCount || 0}</span></td>
+                    <td>
+                        <small>↑ ${formatBytes(mapping.bytesReceived || 0)}</small><br>
+                        <small>↓ ${formatBytes(mapping.bytesSent || 0)}</small>
+                    </td>
+                    <td>
+                        <span class="status-badge ${mapping.status === 'running' ? 'status-running' : 'status-stopped'}">
+                            ${mapping.status === 'running' ? '运行中' : '已停止'}
+                        </span>
+                    </td>
+                    <td>
+                        ${mapping.status === 'running'
+                            ? `<button class="btn btn-primary" style="margin-right:5px" onclick="stopMapping('${identifier}')">停止</button>`
+                            : `<button class="btn btn-success" style="margin-right:5px" onclick="startMapping('${identifier}')">启动</button>`
+                        }
+                        <button class="btn btn-danger" onclick="deleteMapping('${identifier}')">删除</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // 渲染连接状态
+        function renderConnections() {
+            const container = document.getElementById('connectionsDisplay');
+            container.innerHTML = '';
+            
+            if (connections.byPort && connections.byPort.length > 0) {
+                connections.byPort.forEach(portStat => {
+                    const portDiv = document.createElement('div');
+                    portDiv.style.marginBottom = '1rem';
+                    portDiv.style.padding = '1rem';
+                    portDiv.style.border = '1px solid #eee';
+                    portDiv.style.borderRadius = '5px';
+                    
+                    portDiv.innerHTML = `
+                        <h4>端口 ${portStat.port} (${portStat.mappingName})</h4>
+                        <p>总连接数: ${portStat.totalConnections}</p>
+                        <div class="connection-details">
+                            ${portStat.connections.map(conn => `
+                                <div>
+                                    <span class="status-badge status-connected">${conn.status}</span>
+                                    ${conn.clientAddress} → ${conn.targetAddress}
+                                    (上行: ${(conn.bytesReceived / 1024).toFixed(2)} KB, 下行: ${(conn.bytesSent / 1024).toFixed(2)} KB)
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                    
+                    container.appendChild(portDiv);
+                });
+            } else {
+                container.innerHTML = '<p>当前没有活跃连接</p>';
+            }
+        }
+
+        // 渲染系统状态
+        function renderStatus() {
+            const container = document.getElementById('statsGrid');
+            container.innerHTML = `
+                <div class="stat-card">
+                    <h3>${status.totalMappings || 0}</h3>
+                    <p>总映射数</p>
+                </div>
+                <div class="stat-card">
+                    <h3>${status.activeMappings || 0}</h3>
+                    <p>活跃映射</p>
+                </div>
+                <div class="stat-card">
+                    <h3>${status.totalConnections || 0}</h3>
+                    <p>总连接数</p>
+                </div>
+                <div class="stat-card">
+                    <h3>${Math.floor((status.uptime || 0) / 60)}m</h3>
+                    <p>运行时间</p>
+                </div>
+            `;
+        }
+
+        // 显示添加映射模态框
+        function showAddMappingModal() {
+            document.getElementById('addMappingModal').style.display = 'block';
+        }
+
+        // 关闭模态框
+        function closeModal() {
+            document.getElementById('addMappingModal').style.display = 'none';
+            document.getElementById('addMappingForm').reset();
+            document.getElementById('modalErrorMessage').style.display = 'none';
+            document.getElementById('modalSuccessMessage').style.display = 'none';
+        }
+
+        // 添加端口映射
+        document.getElementById('addMappingForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const mappingData = {
+                name: formData.get('name'),
+                listen: {
+                    host: '0.0.0.0',
+                    port: parseInt(formData.get('listenPort'))
+                },
+                target: {
+                    host: formData.get('targetHost'),
+                    port: parseInt(formData.get('targetPort'))
+                }
+            };
+            
+            try {
+                const response = await fetch('/api/mappings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(mappingData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('modalSuccessMessage').textContent = data.message;
+                    document.getElementById('modalSuccessMessage').style.display = 'block';
+                    
+                    setTimeout(() => {
+                        closeModal();
+                        loadMappings();
+                    }, 1000);
+                } else {
+                    document.getElementById('modalErrorMessage').textContent = data.message;
+                    document.getElementById('modalErrorMessage').style.display = 'block';
+                }
+            } catch (error) {
+                document.getElementById('modalErrorMessage').textContent = '添加失败，请检查网络连接';
+                document.getElementById('modalErrorMessage').style.display = 'block';
+            }
+        });
+
+        // 删除端口映射
+        async function deleteMapping(identifier) {
+            if (!confirm('确定要删除这个端口映射吗？')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/mappings/${identifier}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    loadMappings();
+                } else {
+                    alert('删除失败: ' + data.message);
+                }
+            } catch (error) {
+                alert('删除失败，请检查网络连接');
+            }
+        }
+
+        // 启动端口映射
+        async function startMapping(identifier) {
+            try {
+                const response = await fetch(`/api/mappings/${identifier}/start`, {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    loadMappings();
+                } else {
+                    alert('启动失败: ' + data.message);
+                }
+            } catch (error) {
+                alert('启动失败，请检查网络连接');
+            }
+        }
+
+        // 停止端口映射
+        async function stopMapping(identifier) {
+            try {
+                const response = await fetch(`/api/mappings/${identifier}/stop`, {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    loadMappings();
+                } else {
+                    alert('停止失败: ' + data.message);
+                }
+            } catch (error) {
+                alert('停止失败，请检查网络连接');
+            }
+        }
+
+        // 刷新状态
+        function refreshStatus() {
+            loadStatus();
+        }
+
+        // 刷新连接
+        function refreshConnections() {
+            loadConnections();
+        }
+
+        // 退出登录
+        async function logout() {
+            try {
+                await fetch('/api/logout', { method: 'POST' });
+                window.location.href = '/login';
+            } catch (error) {
+                console.error('退出登录失败:', error);
+            }
+        }
+
+        // 点击模态框外部关闭
+        window.onclick = function(event) {
+            const modal = document.getElementById('addMappingModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+    </script>
+</body>
+</html>
