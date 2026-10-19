@@ -4,7 +4,77 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TCP转发服务器 - 管理面板</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%233b82f6'/%3E%3Cpath d='M6 12h3l2-5 3 10 2-5h2' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+    <script src="/common.js"></script>
     <style>
+        :root {
+            color-scheme: light;
+            --bg: #f3f5fb;
+            --bg-accent-1: rgba(99, 102, 241, 0.16);
+            --bg-accent-2: rgba(14, 165, 233, 0.12);
+            --surface: #ffffff;
+            --surface-muted: #f8fafc;
+            --surface-hover: #f1f5f9;
+            --text: #0f172a;
+            --text-muted: #64748b;
+            --text-faint: #94a3b8;
+            --border: #e2e8f0;
+            --border-strong: #cbd5e1;
+            --primary: #6366f1;
+            --primary-strong: #4f46e5;
+            --primary-soft: rgba(99, 102, 241, 0.12);
+            --green: #10b981;
+            --green-soft: rgba(16, 185, 129, 0.12);
+            --amber: #f59e0b;
+            --amber-soft: rgba(245, 158, 11, 0.14);
+            --red: #ef4444;
+            --red-soft: rgba(239, 68, 68, 0.12);
+            --sky: #0ea5e9;
+            --sky-soft: rgba(14, 165, 233, 0.12);
+            --violet: #8b5cf6;
+            --violet-soft: rgba(139, 92, 246, 0.12);
+            --header-bg: rgba(255, 255, 255, 0.82);
+            --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+            --shadow-md: 0 12px 30px -12px rgba(15, 23, 42, 0.18);
+            --shadow-lg: 0 24px 60px -20px rgba(15, 23, 42, 0.25);
+            --radius: 18px;
+            --radius-sm: 12px;
+            --gradient: linear-gradient(135deg, #6366f1, #8b5cf6);
+            --mono: 'SFMono-Regular', ui-monospace, 'Cascadia Code', Consolas, monospace;
+        }
+
+        [data-theme="dark"] {
+            color-scheme: dark;
+            --bg: #0b1120;
+            --bg-accent-1: rgba(99, 102, 241, 0.22);
+            --bg-accent-2: rgba(14, 165, 233, 0.14);
+            --surface: #111827;
+            --surface-muted: #0f172a;
+            --surface-hover: #1e293b;
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --text-faint: #64748b;
+            --border: #1e293b;
+            --border-strong: #334155;
+            --primary: #818cf8;
+            --primary-strong: #6366f1;
+            --primary-soft: rgba(129, 140, 248, 0.18);
+            --green: #34d399;
+            --green-soft: rgba(52, 211, 153, 0.15);
+            --amber: #fbbf24;
+            --amber-soft: rgba(251, 191, 36, 0.15);
+            --red: #f87171;
+            --red-soft: rgba(248, 113, 113, 0.15);
+            --sky: #38bdf8;
+            --sky-soft: rgba(56, 189, 248, 0.15);
+            --violet: #a78bfa;
+            --violet-soft: rgba(167, 139, 250, 0.15);
+            --header-bg: rgba(11, 17, 32, 0.8);
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+            --shadow-md: 0 16px 40px -16px rgba(0, 0, 0, 0.6);
+            --shadow-lg: 0 30px 70px -24px rgba(0, 0, 0, 0.7);
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -12,260 +82,649 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background:
+                radial-gradient(900px 520px at 8% -12%, var(--bg-accent-1), transparent 60%),
+                radial-gradient(900px 520px at 100% 0%, var(--bg-accent-2), transparent 55%),
+                var(--bg);
+            background-attachment: fixed;
+            color: var(--text);
             min-height: 100vh;
+            transition: background-color 0.25s ease, color 0.25s ease;
         }
 
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 1rem 2rem;
-            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+        svg {
+            display: block;
+        }
+
+        .app-header {
+            position: sticky;
+            top: 0;
+            z-index: 50;
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0.85rem 1.5rem;
+            background: var(--header-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border);
         }
 
-        .header h1 {
-            color: white;
-            font-size: 22px;
-            font-weight: 600;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            min-width: 0;
+        }
+
+        .brand-logo {
+            width: 42px;
+            height: 42px;
+            border-radius: 13px;
+            background: var(--gradient);
+            display: grid;
+            place-items: center;
+            color: #ffffff;
+            box-shadow: 0 8px 20px -6px rgba(99, 102, 241, 0.6);
+            flex-shrink: 0;
+        }
+
+        .brand-logo svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        .brand-text h1 {
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .brand-text p {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.1rem;
         }
 
         .header-actions {
             display: flex;
-            gap: 1rem;
+            align-items: center;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            display: grid;
+            place-items: center;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: var(--surface);
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+        }
+
+        .icon-btn:hover {
+            background: var(--surface-hover);
+            color: var(--text);
+            border-color: var(--border-strong);
+        }
+
+        .icon-btn:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+
+        .icon-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .icon-btn .icon-sun {
+            display: none;
+        }
+
+        [data-theme="dark"] .icon-btn .icon-moon {
+            display: none;
+        }
+
+        [data-theme="dark"] .icon-btn .icon-sun {
+            display: block;
+        }
+
+        .select-wrap {
+            position: relative;
+            display: flex;
             align-items: center;
         }
 
-        .header-actions span {
-            color: rgba(255,255,255,0.9);
-            font-size: 14px;
+        .select-wrap svg {
+            position: absolute;
+            left: 0.6rem;
+            width: 15px;
+            height: 15px;
+            color: var(--text-muted);
+            pointer-events: none;
+        }
+
+        .select-wrap select {
+            appearance: none;
+            -webkit-appearance: none;
+            padding: 0.5rem 1.9rem 0.5rem 1.9rem;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: var(--surface);
+            color: var(--text);
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: border-color 0.2s ease;
+        }
+
+        .select-wrap select:hover {
+            border-color: var(--border-strong);
+        }
+
+        .select-wrap select:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+
+        .select-wrap::after {
+            content: '';
+            position: absolute;
+            right: 0.7rem;
+            width: 6px;
+            height: 6px;
+            border-right: 1.5px solid var(--text-muted);
+            border-bottom: 1.5px solid var(--text-muted);
+            transform: rotate(45deg) translateY(-1px);
+            pointer-events: none;
+        }
+
+        .user-chip {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0.7rem 0.25rem 0.3rem;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            background: var(--surface);
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            max-width: 220px;
+        }
+
+        .user-chip .avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--gradient);
+            color: #ffffff;
+            display: grid;
+            place-items: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .user-chip #welcomeText {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .btn {
-            padding: 0.6rem 1.2rem;
+            padding: 0.55rem 1rem;
             border: none;
-            border-radius: 6px;
+            border-radius: 10px;
             cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.3s ease;
+            font-size: 0.8rem;
+            font-weight: 600;
+            font-family: inherit;
+            transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease, background 0.2s ease;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            justify-content: center;
+            gap: 0.4rem;
+            white-space: nowrap;
+        }
+
+        .btn:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        .btn svg {
+            width: 15px;
+            height: 15px;
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            background: var(--gradient);
+            color: #ffffff;
+            box-shadow: 0 8px 18px -8px rgba(99, 102, 241, 0.7);
         }
 
         .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
-        }
-
-        .btn-danger {
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
-            color: white;
-            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
-        }
-
-        .btn-danger:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+            filter: brightness(1.07);
         }
 
         .btn-success {
-            background: linear-gradient(135deg, #2ed573 0%, #26de81 100%);
-            color: white;
-            box-shadow: 0 4px 15px rgba(46, 213, 115, 0.3);
+            background: var(--green);
+            color: #ffffff;
+            box-shadow: 0 8px 18px -10px var(--green);
         }
 
         .btn-success:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(46, 213, 115, 0.4);
+            filter: brightness(1.07);
         }
 
         .btn-warning {
-            background: linear-gradient(135deg, #ffa502 0%, #ff9f43 100%);
-            color: white;
-            box-shadow: 0 4px 15px rgba(255, 165, 2, 0.3);
+            background: var(--amber);
+            color: #1f2937;
+            box-shadow: 0 8px 18px -10px var(--amber);
         }
 
         .btn-warning:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(255, 165, 2, 0.4);
+            filter: brightness(1.05);
+        }
+
+        .btn-danger {
+            background: var(--red);
+            color: #ffffff;
+            box-shadow: 0 8px 18px -10px var(--red);
+        }
+
+        .btn-danger:hover {
+            filter: brightness(1.07);
+        }
+
+        .btn-cancel {
+            background: var(--surface-muted);
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+        }
+
+        .btn-cancel:hover {
+            background: var(--surface-hover);
+            color: var(--text);
         }
 
         .btn-sm {
-            padding: 0.4rem 0.8rem;
-            font-size: 12px;
+            padding: 0.35rem 0.65rem;
+            font-size: 0.72rem;
+            border-radius: 8px;
         }
 
         .container {
-            max-width: 1300px;
+            max-width: 1320px;
             margin: 0 auto;
-            padding: 2rem;
+            padding: 1.75rem 1.5rem 3rem;
         }
 
         .card {
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
-            margin-bottom: 2rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 1.5rem;
             overflow: hidden;
+            transition: box-shadow 0.25s ease, border-color 0.25s ease;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-md);
         }
 
         .card-header {
-            padding: 1.5rem 2rem;
-            border-bottom: 1px solid #f0f0f0;
+            padding: 1.1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: linear-gradient(135deg, #fafbfc 0%, #f8f9fa 100%);
+            gap: 1rem;
+            background: var(--surface-muted);
         }
 
         .card-header h2 {
-            color: #2d3436;
-            font-size: 18px;
-            font-weight: 600;
+            color: var(--text);
+            font-size: 0.95rem;
+            font-weight: 650;
+            letter-spacing: 0.01em;
         }
 
         .card-body {
-            padding: 1.5rem 2rem;
+            padding: 1.5rem;
         }
 
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 0;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
         }
 
         .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 1.8rem;
-            border-radius: 16px;
-            text-align: center;
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-            transition: transform 0.3s ease;
+            position: relative;
+            background: var(--surface-muted);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 1.15rem 1.2rem 1.15rem 1.4rem;
+            display: flex;
+            align-items: center;
+            gap: 0.9rem;
+            overflow: hidden;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: var(--accent);
         }
 
         .stat-card:hover {
-            transform: translateY(-5px);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--border-strong);
         }
 
-        .stat-card:nth-child(2) {
-            background: linear-gradient(135deg, #2ed573 0%, #26de81 100%);
-            box-shadow: 0 10px 30px rgba(46, 213, 115, 0.3);
+        .stat-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: grid;
+            place-items: center;
+            background: var(--accent-soft);
+            color: var(--accent);
+            flex-shrink: 0;
         }
 
-        .stat-card:nth-child(3) {
-            background: linear-gradient(135deg, #ffa502 0%, #ff9f43 100%);
-            box-shadow: 0 10px 30px rgba(255, 165, 2, 0.3);
-        }
-
-        .stat-card:nth-child(4) {
-            background: linear-gradient(135deg, #45aaf2 0%, #2d98da 100%);
-            box-shadow: 0 10px 30px rgba(69, 170, 242, 0.3);
+        .stat-icon svg {
+            width: 22px;
+            height: 22px;
         }
 
         .stat-card h3 {
-            font-size: 36px;
-            margin-bottom: 0.5rem;
+            font-size: 1.45rem;
             font-weight: 700;
+            line-height: 1.15;
+            color: var(--text);
+        }
+
+        .stat-card h3.small {
+            font-size: 1.02rem;
         }
 
         .stat-card p {
-            font-size: 14px;
-            opacity: 0.9;
+            font-size: 0.76rem;
+            color: var(--text-muted);
+            margin-top: 0.2rem;
             font-weight: 500;
+        }
+
+        .stat-card--indigo { --accent: var(--primary); --accent-soft: var(--primary-soft); }
+        .stat-card--green { --accent: var(--green); --accent-soft: var(--green-soft); }
+        .stat-card--amber { --accent: var(--amber); --accent-soft: var(--amber-soft); }
+        .stat-card--sky { --accent: var(--sky); --accent-soft: var(--sky-soft); }
+        .stat-card--violet { --accent: var(--violet); --accent-soft: var(--violet-soft); }
+
+        .table-wrap {
+            overflow-x: auto;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
         }
 
         .table {
             width: 100%;
             border-collapse: collapse;
+            min-width: 760px;
         }
 
         .table th,
         .table td {
-            padding: 1rem;
+            padding: 0.85rem 1rem;
             text-align: left;
-            border-bottom: 1px solid #f0f0f0;
         }
 
         .table th {
-            background: linear-gradient(135deg, #f8f9fa 0%, #f1f3f4 100%);
+            background: var(--surface-muted);
             font-weight: 600;
-            color: #2d3436;
-            font-size: 13px;
+            color: var(--text-muted);
+            font-size: 0.7rem;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .table tr:hover {
-            background-color: #fafbfc;
+            letter-spacing: 0.07em;
+            white-space: nowrap;
+            border-bottom: 1px solid var(--border);
         }
 
         .table td {
-            color: #636e72;
-            font-size: 14px;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+
+        .table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .table tbody tr {
+            transition: background 0.15s ease;
+        }
+
+        .table tbody tr:hover td {
+            background: var(--surface-hover);
+        }
+
+        .table strong {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        .table code {
+            font-family: var(--mono);
+            font-size: 0.78rem;
+            color: var(--text);
+            background: var(--surface-muted);
+            border: 1px solid var(--border);
+            padding: 0.15rem 0.4rem;
+            border-radius: 6px;
+            white-space: nowrap;
         }
 
         .status-badge {
-            padding: 0.35rem 0.75rem;
-            border-radius: 20px;
-            font-size: 12px;
+            padding: 0.25rem 0.6rem;
+            border-radius: 999px;
+            font-size: 0.7rem;
             font-weight: 600;
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            white-space: nowrap;
+        }
+
+        .status-badge::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
         }
 
         .status-running {
-            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-            color: #155724;
+            background: var(--green-soft);
+            color: var(--green);
         }
 
         .status-stopped {
-            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-            color: #721c24;
+            background: var(--red-soft);
+            color: var(--red);
         }
 
         .status-connected {
-            background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
-            color: #0c5460;
+            background: var(--sky-soft);
+            color: var(--sky);
         }
 
         .traffic-info {
-            font-size: 12px;
-            color: #636e72;
-            line-height: 1.6;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            line-height: 1.7;
+            white-space: nowrap;
         }
 
         .traffic-info .up {
-            color: #2ed573;
+            color: var(--green);
         }
 
         .traffic-info .down {
-            color: #45aaf2;
+            color: var(--sky);
         }
 
-        /* Modal Styles */
+        .traffic-info .active-traffic {
+            color: var(--text-muted);
+            font-size: 0.7rem;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 0.35rem;
+            flex-wrap: wrap;
+        }
+
+        .connection-card {
+            margin-bottom: 0.9rem;
+            padding: 1.1rem 1.2rem;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: var(--surface-muted);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .connection-card:last-child {
+            margin-bottom: 0;
+        }
+
+        .connection-card:hover {
+            border-color: var(--border-strong);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .connection-card h4 {
+            color: var(--text);
+            font-size: 0.9rem;
+            font-weight: 650;
+            margin-bottom: 0.55rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .port-badge {
+            background: var(--gradient);
+            color: #ffffff;
+            padding: 0.2rem 0.55rem;
+            border-radius: 7px;
+            font-size: 0.72rem;
+            font-family: var(--mono);
+            font-weight: 500;
+        }
+
+        .connection-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            margin-bottom: 0.6rem;
+        }
+
+        .connection-meta code {
+            font-family: var(--mono);
+            font-size: 0.72rem;
+            color: var(--text);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 0.1rem 0.35rem;
+            border-radius: 5px;
+        }
+
+        .connection-item {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.55rem 0;
+            border-bottom: 1px dashed var(--border);
+            font-size: 0.78rem;
+        }
+
+        .connection-item:last-child {
+            border-bottom: none;
+        }
+
+        .conn-endpoints {
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 0.75rem;
+            overflow-wrap: anywhere;
+        }
+
+        .conn-metrics {
+            color: var(--text-muted);
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2.5rem 1rem;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .empty-state svg {
+            width: 52px;
+            height: 52px;
+            margin: 0 auto 0.9rem;
+            opacity: 0.45;
+        }
+
+        .history-hint {
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            margin-bottom: 0.9rem;
+        }
+
         .modal {
             display: none;
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(4px);
+            inset: 0;
+            background: rgba(2, 6, 23, 0.55);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
             z-index: 1000;
-            animation: fadeIn 0.3s ease;
+            animation: fadeIn 0.2s ease;
+            overflow-y: auto;
         }
 
         @keyframes fadeIn {
@@ -276,7 +735,7 @@
         @keyframes slideIn {
             from {
                 opacity: 0;
-                transform: translateY(-30px) scale(0.95);
+                transform: translateY(-18px) scale(0.97);
             }
             to {
                 opacity: 1;
@@ -285,14 +744,15 @@
         }
 
         .modal-content {
-            background: white;
-            margin: 8% auto;
-            padding: 0;
+            background: var(--surface);
+            color: var(--text);
+            margin: 7% auto;
+            border: 1px solid var(--border);
             border-radius: 20px;
-            max-width: 480px;
-            width: 90%;
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
-            animation: slideIn 0.3s ease;
+            max-width: 520px;
+            width: calc(100% - 2rem);
+            box-shadow: var(--shadow-lg);
+            animation: slideIn 0.24s ease;
             overflow: hidden;
         }
 
@@ -300,320 +760,556 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 1.5rem 2rem;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            padding: 1.2rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface-muted);
         }
 
         .modal-header h3 {
-            font-size: 18px;
-            font-weight: 600;
+            font-size: 1rem;
+            font-weight: 650;
+            color: var(--text);
         }
 
         .close {
-            font-size: 28px;
+            width: 32px;
+            height: 32px;
+            display: grid;
+            place-items: center;
+            font-size: 1.4rem;
             cursor: pointer;
-            color: rgba(255,255,255,0.8);
-            transition: color 0.2s;
+            color: var(--text-muted);
+            border: none;
+            background: transparent;
+            font-family: inherit;
+            border-radius: 8px;
+            transition: background 0.2s ease, color 0.2s ease;
             line-height: 1;
         }
 
         .close:hover {
-            color: white;
+            background: var(--surface-hover);
+            color: var(--text);
         }
 
         .modal-body {
-            padding: 2rem;
+            padding: 1.5rem;
         }
 
         .form-group {
-            margin-bottom: 1.5rem;
+            margin-bottom: 1.1rem;
+        }
+
+        .form-group:last-of-type {
+            margin-bottom: 0;
         }
 
         .form-group label {
             display: block;
-            margin-bottom: 0.5rem;
-            color: #2d3436;
+            margin-bottom: 0.4rem;
+            color: var(--text);
             font-weight: 600;
-            font-size: 14px;
+            font-size: 0.8rem;
         }
 
         .form-group input {
             width: 100%;
-            padding: 0.85rem 1rem;
-            border: 2px solid #e9ecef;
+            padding: 0.7rem 0.85rem;
+            border: 1.5px solid var(--border);
             border-radius: 10px;
-            font-size: 14px;
-            transition: all 0.3s ease;
+            font-size: 0.85rem;
+            font-family: inherit;
+            background: var(--surface-muted);
+            color: var(--text);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
         }
 
         .form-group input:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+            border-color: var(--primary);
+            background: var(--surface);
+            box-shadow: 0 0 0 4px var(--primary-soft);
         }
 
         .form-group input::placeholder {
-            color: #b2bec3;
+            color: var(--text-muted);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 0.75rem;
+        }
+
+        .form-row .form-group {
+            margin-bottom: 1.1rem;
         }
 
         .modal-footer {
-            padding: 0 2rem 2rem 2rem;
+            padding: 0 1.5rem 1.5rem;
             display: flex;
-            gap: 1rem;
+            gap: 0.75rem;
         }
 
         .modal-footer .btn {
             flex: 1;
-            justify-content: center;
-            padding: 0.85rem 1.5rem;
-        }
-
-        .btn-cancel {
-            background: #f1f3f4;
-            color: #636e72;
-        }
-
-        .btn-cancel:hover {
-            background: #e9ecef;
+            padding: 0.75rem 1.25rem;
         }
 
         .error-message {
-            color: #ee5a5a;
-            font-size: 14px;
+            color: var(--red);
+            font-size: 0.8rem;
             margin-top: 1rem;
-            padding: 0.75rem 1rem;
-            background: #fff5f5;
+            padding: 0.7rem 0.9rem;
+            background: var(--red-soft);
             border-radius: 8px;
             display: none;
         }
 
         .success-message {
-            color: #2ed573;
-            font-size: 14px;
+            color: var(--green);
+            font-size: 0.8rem;
             margin-top: 1rem;
-            padding: 0.75rem 1rem;
-            background: #f0fff4;
+            padding: 0.7rem 0.9rem;
+            background: var(--green-soft);
             border-radius: 8px;
             display: none;
         }
 
-        .connection-card {
-            margin-bottom: 1rem;
-            padding: 1.25rem;
-            border: 1px solid #e9ecef;
-            border-radius: 12px;
-            background: linear-gradient(135deg, #fafbfc 0%, #f8f9fa 100%);
-            transition: all 0.3s ease;
-        }
-
-        .connection-card:hover {
-            border-color: #667eea;
-            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.1);
-        }
-
-        .connection-card h4 {
-            color: #2d3436;
-            font-size: 15px;
-            margin-bottom: 0.75rem;
+        .toast-container {
+            position: fixed;
+            right: 1.25rem;
+            bottom: 1.25rem;
             display: flex;
-            align-items: center;
-            gap: 8px;
+            flex-direction: column;
+            gap: 0.5rem;
+            z-index: 2000;
+            max-width: min(360px, calc(100vw - 2.5rem));
         }
 
-        .connection-card h4 .port-badge {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 0.25rem 0.6rem;
-            border-radius: 6px;
-            font-size: 12px;
+        .toast {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--primary);
+            padding: 0.75rem 1rem;
+            border-radius: 10px;
+            box-shadow: var(--shadow-lg);
+            font-size: 0.82rem;
+            opacity: 0;
+            transform: translateY(8px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            overflow-wrap: anywhere;
         }
 
-        .connection-details {
-            font-size: 13px;
-            color: #636e72;
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
         }
 
-        .connection-item {
-            padding: 0.5rem 0;
-            border-bottom: 1px dashed #e9ecef;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+        .toast-error {
+            border-left-color: var(--red);
         }
 
-        .connection-item:last-child {
-            border-bottom: none;
+        .toast-success {
+            border-left-color: var(--green);
         }
 
-        .no-connections {
-            text-align: center;
-            padding: 3rem;
-            color: #b2bec3;
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+            }
         }
 
-        .no-connections svg {
-            width: 60px;
-            height: 60px;
-            margin-bottom: 1rem;
-            opacity: 0.5;
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 8px;
-        }
-
-        @media (max-width: 768px) {
-            .header {
-                flex-direction: column;
-                gap: 1rem;
-                text-align: center;
+        @media (max-width: 900px) {
+            .app-header {
+                flex-wrap: wrap;
+                padding: 0.8rem 1rem;
             }
 
             .container {
-                padding: 1rem;
-            }
-
-            .card-header {
-                flex-direction: column;
-                gap: 1rem;
-            }
-
-            .table {
-                display: block;
-                overflow-x: auto;
+                padding: 1.25rem 1rem 2.5rem;
             }
 
             .stats-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
+
+            .card-header {
+                flex-wrap: wrap;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .brand-text p {
+                display: none;
+            }
+
+            .user-chip {
+                display: none;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .card-body {
+                padding: 1.1rem;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .connection-item {
+                grid-template-columns: 1fr;
+                gap: 0.3rem;
+            }
+
+            .conn-metrics {
+                text-align: left;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>TCP转发服务器管理面板</h1>
-        <div class="header-actions">
-            <span>欢迎，管理员</span>
-            <button class="btn btn-danger btn-sm" onclick="logout()">退出登录</button>
+    <header class="app-header">
+        <div class="brand">
+            <div class="brand-logo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                </svg>
+            </div>
+            <div class="brand-text">
+                <h1 data-i18n="brand.name">TCP 转发服务器</h1>
+                <p data-i18n="brand.subtitle">管理面板</p>
+            </div>
         </div>
-    </div>
 
-    <div class="container">
+        <div class="header-actions">
+            <div class="select-wrap">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="2" y1="12" x2="22" y2="12"/>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                </svg>
+                <select id="languageSelect" data-i18n-aria-label="common.language">
+                    <option value="zh-CN">中文</option>
+                    <option value="en-US">English</option>
+                </select>
+            </div>
+
+            <button type="button" class="icon-btn" data-theme-toggle data-i18n-title="common.theme" data-i18n-aria-label="common.theme">
+                <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </svg>
+                <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="4"/>
+                    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+                </svg>
+            </button>
+
+            <div class="user-chip">
+                <span class="avatar" id="userAvatar">A</span>
+                <span id="welcomeText">管理员</span>
+            </div>
+
+            <button class="btn btn-danger btn-sm" onclick="logout()" data-i18n="header.logout">退出登录</button>
+        </div>
+    </header>
+
+    <main class="container">
         <!-- 系统状态 -->
-        <div class="card">
+        <section class="card">
             <div class="card-header">
-                <h2>系统状态</h2>
-                <button class="btn btn-primary btn-sm" onclick="refreshStatus()">刷新</button>
+                <h2 data-i18n="stats.title">系统状态</h2>
+                <button class="btn btn-primary btn-sm" onclick="refreshAll()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 4v6h-6M1 20v-6h6"/>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                    </svg>
+                    <span data-i18n="common.refresh">刷新</span>
+                </button>
             </div>
             <div class="card-body">
                 <div class="stats-grid" id="statsGrid">
                     <!-- 状态卡片将通过JavaScript动态生成 -->
                 </div>
             </div>
-        </div>
+        </section>
 
         <!-- 端口映射管理 -->
-        <div class="card">
+        <section class="card">
             <div class="card-header">
-                <h2>端口映射管理</h2>
-                <button class="btn btn-success" onclick="showAddMappingModal()">+ 添加映射</button>
+                <h2 data-i18n="mappings.title">端口映射管理</h2>
+                <button class="btn btn-success btn-sm" onclick="showAddMappingModal()" data-i18n="mappings.add">+ 添加映射</button>
             </div>
             <div class="card-body">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>名称</th>
-                            <th>监听端口</th>
-                            <th>目标地址</th>
-                            <th>连接数</th>
-                            <th>流量统计</th>
-                            <th>状态</th>
-                            <th>操作</th>
-                        </tr>
-                    </thead>
-                    <tbody id="mappingsTable">
-                        <!-- 端口映射列表将通过JavaScript动态生成 -->
-                    </tbody>
-                </table>
+                <div class="table-wrap">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th data-i18n="mappings.thName">名称</th>
+                                <th data-i18n="mappings.thListen">监听端口</th>
+                                <th data-i18n="mappings.thTarget">目标地址</th>
+                                <th data-i18n="mappings.thConnections">连接数</th>
+                                <th data-i18n="mappings.thTraffic">流量统计</th>
+                                <th data-i18n="mappings.thStatus">状态</th>
+                                <th data-i18n="mappings.thActions">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mappingsTable">
+                            <!-- 端口映射列表将通过JavaScript动态生成 -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        </div>
+        </section>
 
         <!-- 连接状态监控 -->
-        <div class="card">
+        <section class="card">
             <div class="card-header">
-                <h2>连接状态监控</h2>
-                <button class="btn btn-primary btn-sm" onclick="refreshConnections()">刷新</button>
+                <h2 data-i18n="connections.title">连接状态监控</h2>
+                <button class="btn btn-primary btn-sm" onclick="refreshAll()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 4v6h-6M1 20v-6h6"/>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                    </svg>
+                    <span data-i18n="common.refresh">刷新</span>
+                </button>
             </div>
             <div class="card-body">
                 <div id="connectionsDisplay">
                     <!-- 连接状态将通过JavaScript动态生成 -->
                 </div>
             </div>
-        </div>
-    </div>
+        </section>
 
-    <!-- 添加映射模态框 -->
+        <!-- 最近连接记录 -->
+        <section class="card">
+            <div class="card-header">
+                <h2 data-i18n="history.title">最近连接记录</h2>
+                <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+                    <div class="select-wrap">
+                        <select id="historyFilter" onchange="loadHistory()" data-i18n-aria-label="history.thMapping">
+                            <option value="" data-i18n="history.allMappings">全部映射</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="loadHistory()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M23 4v6h-6M1 20v-6h6"/>
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                        </svg>
+                        <span data-i18n="common.refresh">刷新</span>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <p class="history-hint" data-i18n="history.hint">记录已关闭连接的源地址、目的地址与持续时长，最多保留最近 500 条（服务重启后清空）。</p>
+                <div class="table-wrap">
+                    <table class="table" style="min-width: 880px;">
+                        <thead>
+                            <tr>
+                                <th data-i18n="history.thClosedAt">关闭时间</th>
+                                <th data-i18n="history.thMapping">映射</th>
+                                <th data-i18n="history.thSource">源地址</th>
+                                <th data-i18n="history.thDestination">目的地址</th>
+                                <th data-i18n="history.thDuration">持续时长</th>
+                                <th data-i18n="history.thTraffic">流量</th>
+                                <th data-i18n="history.thReason">结束原因</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTable">
+                            <!-- 历史记录将通过JavaScript动态生成 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 添加 / 编辑映射模态框 -->
     <div id="addMappingModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>添加端口映射</h3>
-                <span class="close" onclick="closeModal()">&times;</span>
+                <h3 id="modalTitle" data-i18n="modal.addTitle">添加端口映射</h3>
+                <button type="button" class="close" onclick="closeModal()" aria-label="Close">&times;</button>
             </div>
             <form id="addMappingForm">
                 <div class="modal-body">
                     <div class="form-group">
-                        <label for="mappingName">映射名称</label>
-                        <input type="text" id="mappingName" name="name" placeholder="例如：Web服务" required>
+                        <label for="mappingName" data-i18n="modal.name">映射名称</label>
+                        <input type="text" id="mappingName" name="name" maxlength="100" data-i18n-placeholder="modal.namePlaceholder" placeholder="例如：Web服务" required>
                     </div>
-                    <div class="form-group">
-                        <label for="listenPort">监听端口</label>
-                        <input type="number" id="listenPort" name="listenPort" min="1" max="65535" placeholder="1-65535" required>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="listenHost" data-i18n="modal.listenHost">监听地址</label>
+                            <input type="text" id="listenHost" name="listenHost" value="0.0.0.0" data-i18n-placeholder="modal.listenHostPlaceholder" placeholder="0.0.0.0 表示所有网卡" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="listenPort" data-i18n="modal.listenPort">监听端口</label>
+                            <input type="number" id="listenPort" name="listenPort" min="1" max="65535" data-i18n-placeholder="modal.portPlaceholder" placeholder="1-65535" required>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="targetHost">目标主机</label>
-                        <input type="text" id="targetHost" name="targetHost" placeholder="IP地址或域名" required>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="targetHost" data-i18n="modal.targetHost">目标主机</label>
+                            <input type="text" id="targetHost" name="targetHost" data-i18n-placeholder="modal.targetHostPlaceholder" placeholder="IP地址或域名" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="targetPort" data-i18n="modal.targetPort">目标端口</label>
+                            <input type="number" id="targetPort" name="targetPort" min="1" max="65535" data-i18n-placeholder="modal.portPlaceholder" placeholder="1-65535" required>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="targetPort">目标端口</label>
-                        <input type="number" id="targetPort" name="targetPort" min="1" max="65535" placeholder="1-65535" required>
-                    </div>
+
                     <div class="error-message" id="modalErrorMessage"></div>
                     <div class="success-message" id="modalSuccessMessage"></div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-cancel" onclick="closeModal()">取消</button>
-                    <button type="submit" class="btn btn-success">确认添加</button>
+                    <button type="button" class="btn btn-cancel" onclick="closeModal()" data-i18n="common.cancel">取消</button>
+                    <button type="submit" class="btn btn-success" id="modalSubmitBtn" data-i18n="modal.confirmAdd">确认添加</button>
                 </div>
             </form>
         </div>
     </div>
 
+    <div id="toastContainer" class="toast-container" role="status" aria-live="polite"></div>
+
     <script>
         let mappings = [];
-        let connections = {};
+        let connections = { byPort: [] };
+        let connectionHistory = [];
         let status = {};
+        let editingId = null;
+        let refreshTick = 0;
+        let historyFilterSignature = '';
 
-        // 页面加载时初始化数据
+        // 统一翻译入口
+        function t(key, params) {
+            return window.I18n ? window.I18n.t(key, params) : key;
+        }
+
+        // 转义 HTML，避免映射名称等内容造成 XSS
+        function escapeHtml(value) {
+            return String(value === undefined || value === null ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        // IPv6 地址加方括号
+        function formatEndpoint(host, port) {
+            const value = String(host === undefined || host === null ? '' : host);
+            return value.includes(':') ? `[${value}]:${port}` : `${value}:${port}`;
+        }
+
+        // 统一 API 请求：携带语言并处理登录失效
+        async function api(url, options = {}) {
+            const headers = Object.assign(
+                { 'X-Language': t ? (window.I18n ? window.I18n.getLanguage() : 'zh-CN') : 'zh-CN' },
+                options.headers || {}
+            );
+
+            const response = await fetch(url, {
+                credentials: 'same-origin',
+                ...options,
+                headers
+            });
+
+            if (response.status === 401) {
+                window.location.href = '/login';
+                throw new Error(t('common.sessionExpired'));
+            }
+
+            let data;
+            try {
+                data = await response.json();
+            } catch (error) {
+                data = { success: false, message: t('common.invalidResponse') };
+            }
+
+            if (!response.ok && data.message === undefined) {
+                data.message = t('common.requestFailed', { status: response.status });
+            }
+
+            return data;
+        }
+
+        // 轻量提示条
+        function showToast(message, type) {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            toast.className = 'toast' + (type ? ` toast-${type}` : '');
+            toast.textContent = message;
+            container.appendChild(toast);
+
+            requestAnimationFrame(() => toast.classList.add('show'));
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 250);
+            }, 3600);
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
+            document.title = t('page.dashboard');
+            refreshAll();
+
+            // 每 5 秒自动刷新；页面隐藏时暂停
+            setInterval(() => {
+                if (!document.hidden) {
+                    refreshAll();
+                }
+            }, 5000);
+
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) {
+                    refreshAll();
+                }
+            });
+        });
+
+        // 切换语言后重新渲染动态内容
+        document.addEventListener('languagechange', function() {
+            document.title = t('page.dashboard');
+            historyFilterSignature = '';
+            renderMappings();
+            renderConnections();
+            // 关闭原因由服务端按请求语言返回，切换语言后需重新拉取
+            loadHistory();
+            renderStatus();
+
+            // 模态框打开时同步标题与按钮
+            const modal = document.getElementById('addMappingModal');
+            if (modal && modal.style.display === 'block') {
+                document.getElementById('modalTitle').textContent = editingId ? t('modal.editTitle') : t('modal.addTitle');
+                document.getElementById('modalSubmitBtn').textContent = editingId ? t('modal.saveChanges') : t('modal.confirmAdd');
+            }
+        });
+
+        function refreshAll() {
             loadMappings();
             loadConnections();
             loadStatus();
 
-            // 每5秒自动刷新连接状态
-            setInterval(() => {
-                loadConnections();
-                loadStatus();
-            }, 5000);
-        });
+            // 历史记录变化较慢，每 15 秒刷新一次即可
+            if (refreshTick++ % 3 === 0) {
+                loadHistory();
+            }
+        }
 
-        // 加载端口映射
         async function loadMappings() {
             try {
-                const response = await fetch('/api/mappings');
-                const data = await response.json();
-
+                const data = await api('/api/mappings');
                 if (data.success) {
                     mappings = data.data;
                     renderMappings();
@@ -623,12 +1319,9 @@
             }
         }
 
-        // 加载连接状态
         async function loadConnections() {
             try {
-                const response = await fetch('/api/connections');
-                const data = await response.json();
-
+                const data = await api('/api/connections');
                 if (data.success) {
                     connections = data.data;
                     renderConnections();
@@ -638,12 +1331,28 @@
             }
         }
 
-        // 加载系统状态
+        async function loadHistory() {
+            try {
+                const filter = document.getElementById('historyFilter');
+                const mappingId = filter ? filter.value : '';
+                const params = new URLSearchParams({ limit: '100' });
+                if (mappingId) {
+                    params.set('mappingId', mappingId);
+                }
+
+                const data = await api(`/api/connections/history?${params.toString()}`);
+                if (data.success) {
+                    connectionHistory = data.data.items;
+                    renderHistory();
+                }
+            } catch (error) {
+                console.error('加载连接记录失败:', error);
+            }
+        }
+
         async function loadStatus() {
             try {
-                const response = await fetch('/api/status');
-                const data = await response.json();
-
+                const data = await api('/api/status');
                 if (data.success) {
                     status = data.data;
                     renderStatus();
@@ -653,51 +1362,107 @@
             }
         }
 
-        // 格式化字节数
+        // 更新历史记录筛选下拉框（仅在映射列表变化时重建）
+        function updateHistoryFilter() {
+            const select = document.getElementById('historyFilter');
+            if (!select) return;
+
+            const signature = mappings
+                .map(mapping => `${mapping.id}:${mapping.name}:${mapping.listen.host}:${mapping.listen.port}`)
+                .join('|');
+
+            if (signature === historyFilterSignature) return;
+            historyFilterSignature = signature;
+
+            const current = select.value;
+            const options = mappings.map(mapping =>
+                `<option value="${escapeHtml(mapping.id)}">${escapeHtml(mapping.name)} (${escapeHtml(formatEndpoint(mapping.listen.host, mapping.listen.port))})</option>`
+            ).join('');
+
+            select.innerHTML = `<option value="">${escapeHtml(t('history.allMappings'))}</option>${options}`;
+
+            if (mappings.some(mapping => mapping.id === current)) {
+                select.value = current;
+            } else {
+                select.value = '';
+                if (current !== '') {
+                    loadHistory();
+                }
+            }
+        }
+
         function formatBytes(bytes) {
-            if (bytes === 0) return '0 B';
+            const value = Number(bytes) || 0;
+            if (value <= 0) return '0 B';
+
             const k = 1024;
-            const sizes = ['B', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.min(sizes.length - 1, Math.floor(Math.log(value) / Math.log(k)));
+            return parseFloat((value / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function formatDuration(seconds) {
+            const value = Math.max(0, Math.floor(Number(seconds) || 0));
+            if (value < 60) return `${value}s`;
+            if (value < 3600) return `${Math.floor(value / 60)}m ${value % 60}s`;
+            if (value < 86400) return `${Math.floor(value / 3600)}h ${Math.floor((value % 3600) / 60)}m`;
+            return `${Math.floor(value / 86400)}d ${Math.floor((value % 86400) / 3600)}h`;
+        }
+
+        function formatUptime(seconds) {
+            const value = Number(seconds) || 0;
+            if (value < 60) return Math.floor(value) + 's';
+            if (value < 3600) return Math.floor(value / 60) + 'm';
+            if (value < 86400) return Math.floor(value / 3600) + 'h ' + Math.floor((value % 3600) / 60) + 'm';
+            return Math.floor(value / 86400) + 'd ' + Math.floor((value % 86400) / 3600) + 'h';
         }
 
         // 渲染端口映射列表
         function renderMappings() {
             const tbody = document.getElementById('mappingsTable');
             tbody.innerHTML = '';
+            updateHistoryFilter();
 
             if (mappings.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#b2bec3;padding:3rem;">暂无端口映射，点击上方按钮添加</td></tr>';
+                tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">${escapeHtml(t('mappings.empty'))}</div></td></tr>`;
                 return;
             }
 
             mappings.forEach((mapping, index) => {
                 const row = document.createElement('tr');
-                const identifier = mapping.id || index;
+                const isRunning = mapping.status === 'running';
+                const activeTraffic = mapping.connectionCount > 0
+                    ? `<div class="active-traffic">${escapeHtml(t('mappings.currentTraffic', {
+                        up: formatBytes(mapping.bytesReceived),
+                        down: formatBytes(mapping.bytesSent)
+                    }))}</div>`
+                    : '';
+
                 row.innerHTML = `
-                    <td><strong>${mapping.name}</strong></td>
-                    <td><code>${mapping.listen.host}:${mapping.listen.port}</code></td>
-                    <td><code>${mapping.target.host}:${mapping.target.port}</code></td>
+                    <td><strong>${escapeHtml(mapping.name)}</strong></td>
+                    <td><code>${escapeHtml(formatEndpoint(mapping.listen.host, mapping.listen.port))}</code></td>
+                    <td><code>${escapeHtml(formatEndpoint(mapping.target.host, mapping.target.port))}</code></td>
                     <td><span class="status-badge status-connected">${mapping.connectionCount || 0}</span></td>
                     <td>
                         <div class="traffic-info">
-                            <span class="up">↑ ${formatBytes(mapping.bytesReceived || 0)}</span><br>
-                            <span class="down">↓ ${formatBytes(mapping.bytesSent || 0)}</span>
+                            <span class="up" title="${escapeHtml(t('mappings.totalUpload'))}">↑ ${formatBytes(mapping.totalBytesReceived)}</span><br>
+                            <span class="down" title="${escapeHtml(t('mappings.totalDownload'))}">↓ ${formatBytes(mapping.totalBytesSent)}</span>
+                            ${activeTraffic}
                         </div>
                     </td>
                     <td>
-                        <span class="status-badge ${mapping.status === 'running' ? 'status-running' : 'status-stopped'}">
-                            ${mapping.status === 'running' ? '运行中' : '已停止'}
+                        <span class="status-badge ${isRunning ? 'status-running' : 'status-stopped'}">
+                            ${escapeHtml(isRunning ? t('common.running') : t('common.stopped'))}
                         </span>
                     </td>
                     <td>
                         <div class="action-buttons">
-                            ${mapping.status === 'running'
-                                ? `<button class="btn btn-warning btn-sm" onclick="stopMapping('${identifier}')">停止</button>`
-                                : `<button class="btn btn-success btn-sm" onclick="startMapping('${identifier}')">启动</button>`
+                            <button class="btn btn-primary btn-sm" onclick="showEditMappingModal(${index})">${escapeHtml(t('common.edit'))}</button>
+                            ${isRunning
+                                ? `<button class="btn btn-warning btn-sm" onclick="stopMapping(${index})">${escapeHtml(t('common.stop'))}</button>`
+                                : `<button class="btn btn-success btn-sm" onclick="startMapping(${index})">${escapeHtml(t('common.start'))}</button>`
                             }
-                            <button class="btn btn-danger btn-sm" onclick="deleteMapping('${identifier}')">删除</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteMapping(${index})">${escapeHtml(t('common.delete'))}</button>
                         </div>
                     </td>
                 `;
@@ -705,222 +1470,407 @@
             });
         }
 
-        // 渲染连接状态
+        // 渲染活跃连接
         function renderConnections() {
             const container = document.getElementById('connectionsDisplay');
             container.innerHTML = '';
 
-            if (connections.byPort && connections.byPort.length > 0) {
-                connections.byPort.forEach(portStat => {
-                    const portDiv = document.createElement('div');
-                    portDiv.className = 'connection-card';
-
-                    portDiv.innerHTML = `
-                        <h4><span class="port-badge">端口 ${portStat.port}</span> ${portStat.mappingName}</h4>
-                        <p style="margin-bottom:0.75rem;color:#636e72;">活跃连接: <strong>${portStat.totalConnections}</strong></p>
-                        <div class="connection-details">
-                            ${portStat.connections.map(conn => `
-                                <div class="connection-item">
-                                    <span class="status-badge status-connected">${conn.status}</span>
-                                    <span>${conn.clientAddress} → ${conn.targetAddress}</span>
-                                    <span style="margin-left:auto;color:#b2bec3;">↑${formatBytes(conn.bytesReceived)} ↓${formatBytes(conn.bytesSent)}</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                    `;
-
-                    container.appendChild(portDiv);
-                });
-            } else {
+            if (!connections.byPort || connections.byPort.length === 0) {
                 container.innerHTML = `
-                    <div class="no-connections">
+                    <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                             <path d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 11-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 002.5 2.5z"/>
                         </svg>
-                        <p>当前没有活跃连接</p>
+                        <p>${escapeHtml(t('connections.empty'))}</p>
                     </div>
                 `;
+                return;
             }
+
+            connections.byPort.forEach(portStat => {
+                const portDiv = document.createElement('div');
+                portDiv.className = 'connection-card';
+
+                const items = portStat.connections.map(conn => {
+                    const startTime = Date.parse(conn.startTime);
+                    const durationSeconds = Number.isFinite(Number(conn.durationMs))
+                        ? Number(conn.durationMs) / 1000
+                        : (Number.isFinite(startTime) ? Math.max(0, (Date.now() - startTime) / 1000) : 0);
+                    const statusText = conn.status === 'connected' ? t('common.connected') : t('common.connecting');
+
+                    return `
+                        <div class="connection-item">
+                            <span class="status-badge status-connected">${escapeHtml(statusText)}</span>
+                            <span class="conn-endpoints">${escapeHtml(conn.clientAddress)} → ${escapeHtml(conn.targetAddress)}</span>
+                            <span class="conn-metrics">${formatDuration(durationSeconds)} · ↑${formatBytes(conn.bytesReceived)} ↓${formatBytes(conn.bytesSent)}</span>
+                        </div>
+                    `;
+                }).join('');
+
+                const firstConn = portStat.connections[0] || {};
+                const configuredListen = formatEndpoint(portStat.host, portStat.port);
+                const actualListen = firstConn.listenAddress && firstConn.listenAddress !== configuredListen
+                    ? `<span>${escapeHtml(t('connections.actualListenLabel'))} <code>${escapeHtml(firstConn.listenAddress)}</code></span>`
+                    : '';
+
+                portDiv.innerHTML = `
+                    <h4><span class="port-badge">${escapeHtml(configuredListen)}</span> ${escapeHtml(portStat.mappingName)}</h4>
+                    <div class="connection-meta">
+                        <span>${escapeHtml(t('connections.activeCount', { count: portStat.totalConnections }))}</span>
+                        ${actualListen}
+                    </div>
+                    <div class="connection-details">${items}</div>
+                `;
+
+                container.appendChild(portDiv);
+            });
+        }
+
+        // 将服务端记录的关闭原因转换为当前界面语言
+        function translateCloseReason(reason) {
+            if (!window.I18n || window.I18n.getLanguage() !== 'en-US') {
+                return reason || '-';
+            }
+
+            const map = {
+                '客户端关闭': 'Client closed',
+                '目标服务器关闭': 'Target closed',
+                '目标连接超时': 'Target connect timeout',
+                '目标连接空闲超时': 'Target idle timeout',
+                '客户端空闲超时': 'Client idle timeout',
+                '目标连接错误': 'Target connection error',
+                '客户端连接错误': 'Client connection error',
+                '端口映射已停止': 'Mapping stopped',
+                '服务正在关闭': 'Server shutting down',
+                '连接被主动断开': 'Closed by administrator'
+            };
+
+            return map[reason] || reason || '-';
+        }
+
+        // 渲染最近连接记录
+        function renderHistory() {
+            const tbody = document.getElementById('historyTable');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            if (!connectionHistory || connectionHistory.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">${escapeHtml(t('history.empty'))}</div></td></tr>`;
+                return;
+            }
+
+            const locale = window.I18n ? window.I18n.getLanguage() : 'zh-CN';
+
+            connectionHistory.forEach(item => {
+                const endTime = new Date(item.endTime);
+                const endText = Number.isNaN(endTime.getTime()) ? '-' : endTime.toLocaleString(locale);
+                const durationSeconds = Number(item.durationMs || 0) / 1000;
+                const statusText = item.status === 'connected' ? '' : t('history.notEstablished');
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${escapeHtml(endText)}</td>
+                    <td>
+                        <strong>${escapeHtml(item.mappingName)}</strong>
+                        <div style="color:var(--text-muted);font-size:0.72rem;">${escapeHtml(item.listenAddress || '')}</div>
+                    </td>
+                    <td><code>${escapeHtml(item.clientAddress)}</code></td>
+                    <td><code>${escapeHtml(item.targetAddress)}</code></td>
+                    <td>${escapeHtml(formatDuration(durationSeconds))}${escapeHtml(statusText)}</td>
+                    <td><span class="up">↑ ${formatBytes(item.bytesReceived)}</span><br><span class="down">↓ ${formatBytes(item.bytesSent)}</span></td>
+                    <td>${escapeHtml(translateCloseReason(item.closeReason))}</td>
+                `;
+                tbody.appendChild(row);
+            });
         }
 
         // 渲染系统状态
         function renderStatus() {
             const container = document.getElementById('statsGrid');
-            const uptime = status.uptime || 0;
-            let uptimeStr;
-            if (uptime < 60) {
-                uptimeStr = Math.floor(uptime) + 's';
-            } else if (uptime < 3600) {
-                uptimeStr = Math.floor(uptime / 60) + 'm';
-            } else {
-                uptimeStr = Math.floor(uptime / 3600) + 'h ' + Math.floor((uptime % 3600) / 60) + 'm';
+            const username = status.username || t('header.welcomeFallback');
+
+            const welcome = document.getElementById('welcomeText');
+            if (welcome) {
+                welcome.textContent = t('header.welcome', { name: username });
             }
 
+            const avatar = document.getElementById('userAvatar');
+            if (avatar) {
+                avatar.textContent = String(username).trim().charAt(0).toUpperCase() || 'A';
+            }
+
+            const totalUp = mappings.reduce((sum, mapping) => sum + (Number(mapping.totalBytesReceived) || 0), 0);
+            const totalDown = mappings.reduce((sum, mapping) => sum + (Number(mapping.totalBytesSent) || 0), 0);
+
             container.innerHTML = `
-                <div class="stat-card">
-                    <h3>${status.totalMappings || 0}</h3>
-                    <p>总映射数</p>
+                <div class="stat-card stat-card--indigo">
+                    <div class="stat-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                            <polyline points="2 17 12 22 22 17"/>
+                            <polyline points="2 12 12 17 22 12"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3>${status.totalMappings || 0}</h3>
+                        <p>${escapeHtml(t('stats.totalMappings'))}</p>
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <h3>${status.activeMappings || 0}</h3>
-                    <p>活跃映射</p>
+                <div class="stat-card stat-card--green">
+                    <div class="stat-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3>${status.activeMappings || 0}</h3>
+                        <p>${escapeHtml(t('stats.activeMappings'))}</p>
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <h3>${status.totalConnections || 0}</h3>
-                    <p>总连接数</p>
+                <div class="stat-card stat-card--amber">
+                    <div class="stat-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3>${status.totalConnections || 0}</h3>
+                        <p>${escapeHtml(t('stats.activeConnections'))}</p>
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <h3>${uptimeStr}</h3>
-                    <p>运行时间</p>
+                <div class="stat-card stat-card--sky">
+                    <div class="stat-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3>${formatUptime(status.uptime)}</h3>
+                        <p>${escapeHtml(t('stats.uptime'))}</p>
+                    </div>
+                </div>
+                <div class="stat-card stat-card--violet">
+                    <div class="stat-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="17 1 21 5 17 9"/>
+                            <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+                            <polyline points="7 23 3 19 7 15"/>
+                            <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="small">↑${formatBytes(totalUp)} ↓${formatBytes(totalDown)}</h3>
+                        <p>${escapeHtml(t('stats.totalTraffic'))}</p>
+                    </div>
                 </div>
             `;
         }
 
-        // 显示添加映射模态框
         function showAddMappingModal() {
-            document.getElementById('addMappingModal').style.display = 'block';
+            editingId = null;
+
+            const form = document.getElementById('addMappingForm');
+            form.reset();
+            document.getElementById('listenHost').value = '0.0.0.0';
+            document.getElementById('modalTitle').textContent = t('modal.addTitle');
+            document.getElementById('modalSubmitBtn').textContent = t('modal.confirmAdd');
+
+            showModal();
             document.getElementById('mappingName').focus();
         }
 
-        // 关闭模态框
+        function showEditMappingModal(index) {
+            const mapping = mappings[index];
+            if (!mapping) return;
+
+            editingId = mapping.id;
+
+            document.getElementById('mappingName').value = mapping.name || '';
+            document.getElementById('listenHost').value = mapping.listen.host || '0.0.0.0';
+            document.getElementById('listenPort').value = mapping.listen.port;
+            document.getElementById('targetHost').value = mapping.target.host || '';
+            document.getElementById('targetPort').value = mapping.target.port;
+            document.getElementById('modalTitle').textContent = t('modal.editTitle');
+            document.getElementById('modalSubmitBtn').textContent = t('modal.saveChanges');
+
+            showModal();
+            document.getElementById('mappingName').focus();
+        }
+
+        function showModal() {
+            document.getElementById('addMappingModal').style.display = 'block';
+            hideModalMessages();
+        }
+
         function closeModal() {
             document.getElementById('addMappingModal').style.display = 'none';
             document.getElementById('addMappingForm').reset();
+            editingId = null;
+            hideModalMessages();
+        }
+
+        function hideModalMessages() {
             document.getElementById('modalErrorMessage').style.display = 'none';
             document.getElementById('modalSuccessMessage').style.display = 'none';
         }
 
-        // 添加端口映射
+        function showModalError(message) {
+            const errorElement = document.getElementById('modalErrorMessage');
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+            document.getElementById('modalSuccessMessage').style.display = 'none';
+        }
+
+        // 添加 / 更新端口映射
         document.getElementById('addMappingForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
             const formData = new FormData(e.target);
-            const mappingData = {
-                name: formData.get('name'),
+            const payload = {
+                name: String(formData.get('name') || '').trim(),
                 listen: {
-                    host: '0.0.0.0',
-                    port: parseInt(formData.get('listenPort'))
+                    host: String(formData.get('listenHost') || '').trim(),
+                    port: parseInt(formData.get('listenPort'), 10)
                 },
                 target: {
-                    host: formData.get('targetHost'),
-                    port: parseInt(formData.get('targetPort'))
+                    host: String(formData.get('targetHost') || '').trim(),
+                    port: parseInt(formData.get('targetPort'), 10)
                 }
             };
 
+            const isEdit = editingId !== null;
+            const mapping = isEdit ? mappings.find(item => item.id === editingId) : null;
+
+            if (isEdit && !mapping) {
+                showModalError(t('modal.mappingMissing'));
+                return;
+            }
+
+            const submitBtn = document.getElementById('modalSubmitBtn');
+            const originalText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = t('modal.saving');
+
             try {
-                const response = await fetch('/api/mappings', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(mappingData)
+                const url = isEdit
+                    ? `/api/mappings/${encodeURIComponent(editingId)}`
+                    : '/api/mappings';
+
+                const data = await api(url, {
+                    method: isEdit ? 'PUT' : 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
                 });
 
-                const data = await response.json();
-
                 if (data.success) {
-                    document.getElementById('modalSuccessMessage').textContent = data.message;
-                    document.getElementById('modalSuccessMessage').style.display = 'block';
+                    const successElement = document.getElementById('modalSuccessMessage');
+                    successElement.textContent = isEdit ? t('modal.saveSuccess') : t('modal.addSuccess');
+                    successElement.style.display = 'block';
                     document.getElementById('modalErrorMessage').style.display = 'none';
 
                     setTimeout(() => {
                         closeModal();
-                        loadMappings();
-                    }, 1000);
+                        refreshAll();
+                    }, 600);
                 } else {
-                    document.getElementById('modalErrorMessage').textContent = data.message;
-                    document.getElementById('modalErrorMessage').style.display = 'block';
-                    document.getElementById('modalSuccessMessage').style.display = 'none';
+                    showModalError(data.message || t('modal.operationFailed'));
                 }
             } catch (error) {
-                document.getElementById('modalErrorMessage').textContent = '添加失败，请检查网络连接';
-                document.getElementById('modalErrorMessage').style.display = 'block';
+                if (error.message !== t('common.sessionExpired')) {
+                    showModalError(t('common.networkError'));
+                }
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
             }
         });
 
-        // 删除端口映射
-        async function deleteMapping(identifier) {
-            if (!confirm('确定要删除这个端口映射吗？')) {
+        async function deleteMapping(index) {
+            const mapping = mappings[index];
+            if (!mapping) return;
+
+            if (!confirm(t('actions.deleteConfirm', { name: mapping.name }))) {
                 return;
             }
 
             try {
-                const response = await fetch(`/api/mappings/${identifier}`, {
+                const data = await api(`/api/mappings/${encodeURIComponent(mapping.id)}`, {
                     method: 'DELETE'
                 });
 
-                const data = await response.json();
-
                 if (data.success) {
-                    loadMappings();
+                    showToast(t('actions.deleted'), 'success');
+                    refreshAll();
                 } else {
-                    alert('删除失败: ' + data.message);
+                    showToast(t('actions.deleteFailed', { message: data.message }), 'error');
                 }
             } catch (error) {
-                alert('删除失败，请检查网络连接');
+                if (error.message !== t('common.sessionExpired')) {
+                    showToast(t('common.networkError'), 'error');
+                }
             }
         }
 
-        // 启动端口映射
-        async function startMapping(identifier) {
+        async function startMapping(index) {
+            const mapping = mappings[index];
+            if (!mapping) return;
+
             try {
-                const response = await fetch(`/api/mappings/${identifier}/start`, {
+                const data = await api(`/api/mappings/${encodeURIComponent(mapping.id)}/start`, {
                     method: 'POST'
                 });
 
-                const data = await response.json();
-
                 if (data.success) {
-                    loadMappings();
+                    showToast(t('actions.started'), 'success');
+                    refreshAll();
                 } else {
-                    alert('启动失败: ' + data.message);
+                    showToast(t('actions.startFailed', { message: data.message }), 'error');
                 }
             } catch (error) {
-                alert('启动失败，请检查网络连接');
+                if (error.message !== t('common.sessionExpired')) {
+                    showToast(t('common.networkError'), 'error');
+                }
             }
         }
 
-        // 停止端口映射
-        async function stopMapping(identifier) {
+        async function stopMapping(index) {
+            const mapping = mappings[index];
+            if (!mapping) return;
+
             try {
-                const response = await fetch(`/api/mappings/${identifier}/stop`, {
+                const data = await api(`/api/mappings/${encodeURIComponent(mapping.id)}/stop`, {
                     method: 'POST'
                 });
 
-                const data = await response.json();
-
                 if (data.success) {
-                    loadMappings();
+                    showToast(t('actions.stopped'), 'success');
+                    refreshAll();
                 } else {
-                    alert('停止失败: ' + data.message);
+                    showToast(t('actions.stopFailed', { message: data.message }), 'error');
                 }
             } catch (error) {
-                alert('停止失败，请检查网络连接');
+                if (error.message !== t('common.sessionExpired')) {
+                    showToast(t('common.networkError'), 'error');
+                }
             }
         }
 
-        // 刷新状态
-        function refreshStatus() {
-            loadStatus();
-            loadMappings();
-        }
-
-        // 刷新连接
-        function refreshConnections() {
-            loadConnections();
-        }
-
-        // 退出登录
         async function logout() {
             try {
-                await fetch('/api/logout', { method: 'POST' });
-                window.location.href = '/login';
+                await fetch('/api/logout', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'X-Language': window.I18n ? window.I18n.getLanguage() : 'zh-CN' }
+                });
             } catch (error) {
                 console.error('退出登录失败:', error);
             }
+            window.location.href = '/login';
         }
 
-        // ESC键关闭模态框
+        // ESC 关闭模态框
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 closeModal();

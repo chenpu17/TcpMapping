@@ -1,6 +1,6 @@
 {
   "name": "@chenpu17/tcpmapping",
-  "version": "2.1.1",
+  "version": "2.3.0",
   "description": "TCP端口转发服务器，支持多端口映射、WebUI管理界面和实时连接监控",
   "main": "server.js",
   "bin": {
@@ -9,14 +9,17 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
+    "test": "node test/smoke.js",
     "setup-password": "node setup-password.js",
     "reset-password": "node setup-password.js"
   },
   "files": [
     "bin/",
     "public/",
+    "docs/",
     "server.js",
-    "setup-password.js"
+    "setup-password.js",
+    "CHANGELOG.md"
   ],
   "keywords": [
     "tcp",
@@ -45,7 +48,6 @@
   "dependencies": {
     "express": "^4.18.2",
     "express-session": "^1.17.3",
-    "bcryptjs": "^2.4.3",
-    "body-parser": "^1.20.2"
+    "bcryptjs": "^2.4.3"
   }
 }

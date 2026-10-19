@@ -20,32 +20,80 @@ const rl = readline.createInterface({
   output: process.stdout
 });
 
-// 密码复杂度验证
-function validatePassword(password) {
-  const minLength = 8;
-  const hasUppercase = /[A-Z]/.test(password);
-  const hasLowercase = /[a-z]/.test(password);
-  const hasNumbers = /\d/.test(password);
-  const hasSpecialChars = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+// 非 TTY 环境（如管道输入）使用行队列，避免缓冲区中的行被丢弃
+const inputQueue = [];
+const inputWaiters = [];
 
-  const errors = [];
-  
-  if (password.length < minLength) {
-    errors.push(`密码长度至少需要${minLength}个字符`);
+function readInputLine(prompt) {
+  if (!process.stdin.isTTY) {
+    process.stdout.write(prompt);
+
+    if (inputQueue.length > 0) {
+      return Promise.resolve(inputQueue.shift());
+    }
+
+    return new Promise((resolve) => {
+      inputWaiters.push(resolve);
+    });
   }
-  
-  if (!hasUppercase) {
+
+  return new Promise((resolve) => {
+    rl.question(prompt, resolve);
+  });
+}
+
+if (!process.stdin.isTTY) {
+  rl.on('line', (line) => {
+    const waiter = inputWaiters.shift();
+    if (waiter) {
+      waiter(line);
+    } else {
+      inputQueue.push(line);
+    }
+  });
+
+  rl.on('close', () => {
+    while (inputWaiters.length > 0) {
+      inputWaiters.shift()(null);
+    }
+  });
+}
+
+// 默认密码策略
+const DEFAULT_PASSWORD_POLICY = {
+  minLength: 8,
+  requireUppercase: true,
+  requireLowercase: true,
+  requireNumbers: true,
+  requireSpecialChars: false,
+  passwordExpireDays: 90
+};
+
+// 密码复杂度验证
+function validatePassword(password, policy) {
+  const rules = { ...DEFAULT_PASSWORD_POLICY, ...(policy || {}) };
+  const errors = [];
+
+  if (password.length < rules.minLength) {
+    errors.push(`密码长度至少需要${rules.minLength}个字符`);
+  }
+
+  if (rules.requireUppercase && !/[A-Z]/.test(password)) {
     errors.push('密码必须包含至少一个大写字母');
   }
-  
-  if (!hasLowercase) {
+
+  if (rules.requireLowercase && !/[a-z]/.test(password)) {
     errors.push('密码必须包含至少一个小写字母');
   }
-  
-  if (!hasNumbers) {
+
+  if (rules.requireNumbers && !/\d/.test(password)) {
     errors.push('密码必须包含至少一个数字');
   }
-  
+
+  if (rules.requireSpecialChars && !/[!@#$%^&*(),.?":{}|<>_\-+=[\]\\/;'`~]/.test(password)) {
+    errors.push('密码必须包含至少一个特殊字符');
+  }
+
   return {
     isValid: errors.length === 0,
     errors: errors
@@ -55,10 +103,11 @@ function validatePassword(password) {
 // 获取用户输入（隐藏密码）
 function getPassword(prompt) {
   return new Promise((resolve) => {
-    const rl2 = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout
-    });
+    // 非 TTY 环境（如管道输入）无法使用原始模式，退回到普通输入
+    if (!process.stdin.isTTY) {
+      readInputLine(prompt).then(resolve);
+      return;
+    }
 
     // Windows 兼容：使用简单的输入方式
     // 在某些终端上密码可能可见，但这是最兼容的方式
@@ -84,10 +133,7 @@ function getPassword(prompt) {
 
       // 回退方案：普通输入（密码可见）
       console.log('(密码将可见)');
-      rl2.question('', (answer) => {
-        rl2.close();
-        resolve(answer);
-      });
+      rl.question('', (answer) => resolve(answer));
       return;
     }
 
@@ -106,7 +152,12 @@ function getPassword(prompt) {
         process.stdout.write('\n');
         resolve(password);
       } else if (char === '\u0003') {
-        process.exit();
+        // Ctrl+C: 恢复终端状态后退出
+        process.stdin.setRawMode(false);
+        process.stdin.removeListener('data', onData);
+        process.stdin.pause();
+        process.stdout.write('\n');
+        process.exit(130);
       } else if (char === '\u007f' || char === '\b') {
         if (password.length > 0) {
           password = password.slice(0, -1);
@@ -128,19 +179,24 @@ function loadAuthConfig() {
   try {
     const configPath = path.join(getConfigDir(), 'auth-config.json');
     const configData = fs.readFileSync(configPath, 'utf8');
-    return JSON.parse(configData);
+    const config = JSON.parse(configData);
+
+    if (!Array.isArray(config.users)) {
+      config.users = [];
+    }
+    config.passwordPolicy = { ...DEFAULT_PASSWORD_POLICY, ...(config.passwordPolicy || {}) };
+    config.sessionConfig = config.sessionConfig || {
+      sessionTimeout: 24,
+      maxFailedAttempts: 5,
+      lockoutDuration: 30
+    };
+
+    return config;
   } catch (error) {
     // 如果文件不存在，返回默认配置
     return {
       users: [],
-      passwordPolicy: {
-        minLength: 8,
-        requireUppercase: true,
-        requireLowercase: true,
-        requireNumbers: true,
-        requireSpecialChars: false,
-        passwordExpireDays: 90
-      },
+      passwordPolicy: { ...DEFAULT_PASSWORD_POLICY },
       sessionConfig: {
         sessionTimeout: 24,
         maxFailedAttempts: 5,
@@ -150,15 +206,26 @@ function loadAuthConfig() {
   }
 }
 
-// 保存认证配置
+// 保存认证配置（原子写入，且仅当前用户可读写）
 function saveAuthConfig(config) {
   const configDir = getConfigDir();
   // 确保目录存在
   if (!fs.existsSync(configDir)) {
-    fs.mkdirSync(configDir, { recursive: true });
+    fs.mkdirSync(configDir, { recursive: true, mode: 0o700 });
   }
+
   const configPath = path.join(configDir, 'auth-config.json');
-  fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+  const tmpPath = `${configPath}.tmp-${process.pid}-${Date.now()}`;
+
+  fs.writeFileSync(tmpPath, JSON.stringify(config, null, 2), { mode: 0o600 });
+  fs.renameSync(tmpPath, configPath);
+
+  try {
+    fs.chmodSync(configPath, 0o600);
+  } catch (error) {
+    // Windows 等平台可能不支持 chmod，忽略
+  }
+
   console.log(`配置已保存到: ${configPath}`);
 }
 
@@ -171,41 +238,48 @@ async function setupPassword() {
     const authConfig = loadAuthConfig();
     
     // 获取用户名
-    const username = await new Promise((resolve) => {
-      rl.question('请输入用户名 (默认: admin): ', (input) => {
-        resolve(input.trim() || 'admin');
-      });
-    });
-    
+    const usernameInput = await readInputLine('请输入用户名 (默认: admin): ');
+    const username = (usernameInput || '').trim() || 'admin';
+
     let password = '';
     let isValidPassword = false;
-    
+
     // 获取并验证密码
     while (!isValidPassword) {
       password = await getPassword('请输入新密码: ');
-      
+
+      if (password === null) {
+        console.log('\n输入已结束，密码设置已取消');
+        process.exit(1);
+      }
+
       if (password.length === 0) {
         console.log('密码不能为空，请重新输入');
         continue;
       }
-      
-      const validation = validatePassword(password);
-      
+
+      const validation = validatePassword(password, authConfig.passwordPolicy);
+
       if (!validation.isValid) {
         console.log('\n密码不符合要求:');
         validation.errors.forEach(error => console.log(`  - ${error}`));
         console.log('');
         continue;
       }
-      
+
       // 确认密码
       const confirmPassword = await getPassword('请再次输入密码确认: ');
-      
+
+      if (confirmPassword === null) {
+        console.log('\n输入已结束，密码设置已取消');
+        process.exit(1);
+      }
+
       if (password !== confirmPassword) {
         console.log('\n两次输入的密码不一致，请重新输入\n');
         continue;
       }
-      
+
       isValidPassword = true;
     }
     
@@ -229,6 +303,8 @@ async function setupPassword() {
       // 更新现有用户
       authConfig.users[userIndex].passwordHash = passwordHash;
       authConfig.users[userIndex].lastPasswordChange = new Date().toISOString();
+      // 重置密码时同时启用账户，避免因账户被禁用而无法登录
+      authConfig.users[userIndex].enabled = true;
       console.log(`\n✓ 已更新用户密码: ${username}`);
     }
     
@@ -236,12 +312,16 @@ async function setupPassword() {
     saveAuthConfig(authConfig);
     
     console.log('✓ 密码设置完成');
+    const policy = authConfig.passwordPolicy;
     console.log('\n密码策略要求:');
-    console.log('  - 最少8个字符');
-    console.log('  - 包含大写字母');
-    console.log('  - 包含小写字母');
-    console.log('  - 包含数字');
-    console.log(`  - 密码有效期: ${authConfig.passwordPolicy.passwordExpireDays}天`);
+    console.log(`  - 最少${policy.minLength}个字符`);
+    if (policy.requireUppercase) console.log('  - 包含大写字母');
+    if (policy.requireLowercase) console.log('  - 包含小写字母');
+    if (policy.requireNumbers) console.log('  - 包含数字');
+    if (policy.requireSpecialChars) console.log('  - 包含特殊字符');
+    if (policy.passwordExpireDays > 0) {
+      console.log(`  - 密码有效期: ${policy.passwordExpireDays}天`);
+    }
     
   } catch (error) {
     console.error('设置密码时发生错误:', error.message);

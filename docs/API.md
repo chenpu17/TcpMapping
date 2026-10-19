@@ -7,6 +7,7 @@ TCP转发服务器提供RESTful API接口，用于管理端口映射、监控连
 - **Base URL**: `http://localhost:9999`
 - **认证方式**: Session Cookie
 - **数据格式**: JSON
+- **提示语言**: 可选请求头 `X-Language: zh-CN | en-US`，未提供时根据 `Accept-Language` 自动选择；影响响应中的 `message` 字段。
 
 ---
 
@@ -24,6 +25,7 @@ GET /api/health
 ```json
 {
   "status": "ok",
+  "version": "2.3.0",
   "timestamp": "2025-12-08T08:30:00.000Z",
   "uptime": 3600,
   "activeMappings": 3,
@@ -65,8 +67,11 @@ Content-Type: application/json
 ```
 
 **错误响应**:
-- `401`: 密码错误 / 用户不存在
+- `401`: 用户名或密码错误
 - `429`: 登录尝试次数过多，账户已锁定
+- `503`: 服务器尚未配置管理员密码（请运行 `tcpmapping setup-password`）
+
+> 登录成功后会重新生成 Session ID。所有写操作（POST/PUT/DELETE）如果携带 `Origin` 请求头，其 Host 必须与当前服务一致，否则返回 `403`。
 
 ### 登出
 
@@ -111,7 +116,10 @@ GET /api/mappings
       "status": "running",
       "connectionCount": 3,
       "bytesReceived": 102400,
-      "bytesSent": 204800
+      "bytesSent": 204800,
+      "totalConnections": 42,
+      "totalBytesReceived": 1048576,
+      "totalBytesSent": 2097152
     }
   ]
 }
@@ -127,9 +135,14 @@ GET /api/mappings
 | target.host | string | 目标主机地址 |
 | target.port | number | 目标端口 |
 | status | string | 状态: running / stopped |
-| connectionCount | number | 当前连接数 |
-| bytesReceived | number | 上行流量（字节） |
-| bytesSent | number | 下行流量（字节） |
+| connectionCount | number | 当前活跃连接数 |
+| bytesReceived | number | 当前活跃连接的上行流量（字节） |
+| bytesSent | number | 当前活跃连接的下行流量（字节） |
+| totalConnections | number | 累计连接数（服务启动以来） |
+| totalBytesReceived | number | 累计上行流量（字节） |
+| totalBytesSent | number | 累计下行流量（字节） |
+
+> 累计统计保存在内存中，服务重启后归零。
 
 ### 添加映射
 
@@ -182,10 +195,11 @@ Content-Type: application/json
 ```
 
 **验证规则**:
-- 映射名称不能为空
+- 映射名称不能为空，且不超过 100 个字符
 - 端口必须在 1-65535 范围内
-- 目标主机必须是有效的IP地址或域名
-- 监听端口不能与已有映射重复
+- 监听地址和目标主机必须是有效的 IP 地址或域名
+- 监听地址 + 端口不能与已有映射重复
+- 端口被占用时会返回 `400`，且不会写入配置
 
 ### 更新映射
 
@@ -212,7 +226,7 @@ Content-Type: application/json
 ```json
 {
   "success": true,
-  "message": "端口映射已启动",
+  "message": "端口映射已更新",
   "data": {
     "id": "abc123xyz",
     "name": "新名称",
@@ -227,6 +241,9 @@ Content-Type: application/json
   }
 }
 ```
+
+> 只更新请求中提供的字段。若映射原本处于停止状态，更新后仍保持停止。
+> 仅修改名称或目标地址时不会重启监听，已有连接不受影响（新连接使用新目标）；修改监听地址或端口时会重新绑定，已有连接会被断开。
 
 ### 删除映射
 
@@ -291,6 +308,7 @@ GET /api/connections
     "total": 5,
     "byPort": [
       {
+        "host": "0.0.0.0",
         "port": 5588,
         "mappingName": "Dify",
         "totalConnections": 3,
@@ -298,11 +316,14 @@ GET /api/connections
           {
             "id": "conn123",
             "mappingName": "Dify",
+            "sourceHost": "0.0.0.0",
             "sourcePort": 5588,
+            "listenAddress": "192.168.1.5:5588",
             "clientAddress": "192.168.1.10:54321",
             "targetAddress": "113.45.34.202:5588",
             "startTime": "2025-12-08T08:00:00.000Z",
             "lastActivity": 1733648400000,
+            "durationMs": 120000,
             "bytesReceived": 10240,
             "bytesSent": 20480,
             "status": "connected"
@@ -313,6 +334,56 @@ GET /api/connections
   }
 }
 ```
+
+**字段说明**:
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| listenAddress | string | 客户端实际连接到的本地地址（如配置为 `0.0.0.0`，这里显示真实网卡地址） |
+| clientAddress | string | 客户端源地址（IP:端口） |
+| targetAddress | string | 转发目的地址（IP:端口） |
+| durationMs | number | 连接已持续时长（毫秒） |
+
+### 获取最近连接记录
+
+```
+GET /api/connections/history?mappingId=<id>&limit=100
+```
+
+**查询参数**:
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| mappingId | string | 否 | 只返回指定映射的记录 |
+| limit | number | 否 | 返回条数，默认 50，最大 200 |
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "data": {
+    "total": 120,
+    "limit": 100,
+    "items": [
+      {
+        "id": "conn123",
+        "mappingId": "abc123xyz",
+        "mappingName": "Web服务",
+        "listenAddress": "192.168.1.5:5588",
+        "clientAddress": "192.168.1.10:54321",
+        "targetAddress": "113.45.34.202:5588",
+        "startTime": "2025-12-08T08:00:00.000Z",
+        "endTime": "2025-12-08T08:02:00.000Z",
+        "durationMs": 120000,
+        "bytesReceived": 10240,
+        "bytesSent": 20480,
+        "status": "connected",
+        "closeReason": "客户端关闭"
+      }
+    ]
+  }
+}
+```
+
+> 记录只在内存中保留最近 500 条已关闭连接，服务重启后清空；通过 CLI（`tcpmapping start`）启动时，连接关闭日志会同时写入日志文件。`status` 为 `connecting` 表示目标连接尚未建立即结束。
 
 ### 获取系统状态
 
@@ -325,6 +396,8 @@ GET /api/status
 {
   "success": true,
   "data": {
+    "version": "2.3.0",
+    "username": "admin",
     "totalMappings": 3,
     "activeMappings": 3,
     "totalConnections": 5,
@@ -357,11 +430,13 @@ GET /api/status
 | 状态码 | 说明 |
 |--------|------|
 | 200 | 成功 |
-| 400 | 请求参数错误 |
+| 400 | 请求参数错误 / 端口被占用 / 配置保存失败 |
 | 401 | 未认证 / 认证失败 |
+| 403 | 跨站请求被拒绝 |
 | 404 | 资源不存在 |
 | 429 | 请求过于频繁 |
 | 500 | 服务器内部错误 |
+| 503 | 尚未配置管理员密码 |
 
 ---
 
