@@ -345,6 +345,24 @@ async function main() {
     assert.ok(stats.totalBytesReceived >= message.length, '应累计总上行流量');
     console.log('✓ 连接与流量统计正确');
 
+    // 服务进程自身资源占用
+    const statusResponse = await request(webPort, 'GET', '/api/status', { cookie });
+    assert.strictEqual(statusResponse.status, 200);
+    const resources = statusResponse.body.data.resources;
+    assert.ok(resources, '状态接口应包含服务资源');
+    assert.ok(Number.isFinite(resources.cpuPercent)
+      && resources.cpuPercent >= 0
+      && resources.cpuPercent <= 100, 'CPU 使用率应在 0-100 之间');
+    assert.ok(resources.cpuCount >= 1, '应报告 CPU 核心数');
+    assert.ok(resources.memory.rss > 0, '应报告进程内存占用');
+    assert.ok(resources.memory.systemTotal > 0, '应报告系统内存总量');
+    assert.ok(resources.traffic.totalReceived >= message.length, '应累计进程总上行流量');
+    assert.ok(resources.traffic.totalSent >= message.length, '应累计进程总下行流量');
+    assert.ok(Number.isFinite(resources.traffic.receivedPerSecond), '应报告实时上行速率');
+    assert.ok(Number.isFinite(resources.traffic.sentPerSecond), '应报告实时下行速率');
+    assert.ok(resources.sampledAt, '应包含采样时间');
+    console.log('✓ 服务资源监控数据正确');
+
     // 停止映射会断开活跃连接
     const closed = new Promise(resolve => socket.once('close', resolve));
     const stopped = await request(webPort, 'POST', `/api/mappings/${mappingId}/stop`, { cookie });

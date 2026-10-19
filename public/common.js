@@ -42,6 +42,16 @@
       'stats.uptime': '运行时间',
       'stats.totalTraffic': '累计流量',
 
+      'resources.title': '服务资源',
+      'resources.cpu': 'CPU 使用率',
+      'resources.cpuHint': '{count} 核 · 占整机',
+      'resources.memory': '内存占用',
+      'resources.memoryHint': '占系统内存 {percent}% · 堆 {heap}',
+      'resources.traffic': '实时流量',
+      'resources.trafficHint': '累计 ↑{up} ↓{down}',
+      'resources.sampledAt': '采样于 {time}',
+      'resources.waiting': '等待采样…',
+
       'mappings.title': '端口映射管理',
       'mappings.add': '+ 添加映射',
       'mappings.empty': '暂无端口映射，点击上方按钮添加',
@@ -148,6 +158,16 @@
       'stats.activeConnections': 'Active connections',
       'stats.uptime': 'Uptime',
       'stats.totalTraffic': 'Total traffic',
+
+      'resources.title': 'Service Resources',
+      'resources.cpu': 'CPU usage',
+      'resources.cpuHint': '{count} cores · of total',
+      'resources.memory': 'Memory',
+      'resources.memoryHint': '{percent}% of system memory · heap {heap}',
+      'resources.traffic': 'Live traffic',
+      'resources.trafficHint': 'Total ↑{up} ↓{down}',
+      'resources.sampledAt': 'Sampled at {time}',
+      'resources.waiting': 'Waiting for sample…',
 
       'mappings.title': 'Port Mappings',
       'mappings.add': '+ Add Mapping',

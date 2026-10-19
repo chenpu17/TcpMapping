@@ -13,6 +13,7 @@ TCP端口转发服务器，支持WebUI管理界面和实时连接监控。
 - **WebUI Management** - Add, edit, start, stop and delete mappings in real time | WebUI管理界面
 - **Bilingual & Themes** - Simplified Chinese / English UI, dark and light themes | 中英文界面与深色模式
 - **Connection Monitoring** - Live connection details, per-mapping cumulative traffic and a searchable history of closed connections | 实时连接、累计流量与已关闭连接记录
+- **Service Resources** - Live CPU, memory and traffic usage of the forwarding process itself | 服务进程自身的 CPU、内存与实时流量
 - **Robust Forwarding** - Backpressure handling, TCP half-close support and idle timeouts | 背压控制、半关闭与空闲超时
 - **Secure by Default** - bcrypt hashing, login lockout, session hardening, no default password | 默认安全
 

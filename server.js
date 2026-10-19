@@ -46,6 +46,7 @@ const mappingStats = new Map(); // 映射ID -> 累计统计
 const connectionHistory = []; // 最近关闭的连接记录（有界）
 const pendingStarts = new Set(); // 正在启动的映射
 const loginAttempts = new Map(); // IP -> { count, lastAttempt }
+const processTraffic = { received: 0, sent: 0 }; // 进程启动以来的累计流量
 
 const CONNECTION_HISTORY_LIMIT = 500; // 最多保留的已关闭连接记录数
 
@@ -406,6 +407,81 @@ function formatDurationMs(ms) {
   if (totalSeconds < 86400) return `${Math.floor(totalSeconds / 3600)}h ${Math.floor((totalSeconds % 3600) / 60)}m`;
   return `${Math.floor(totalSeconds / 86400)}d ${Math.floor((totalSeconds % 86400) / 3600)}h`;
 }
+
+// ==================== 服务自身资源采样 ====================
+
+const CPU_COUNT = Math.max(1, (os.cpus() || []).length);
+const resourceSnapshot = {
+  cpuPercent: 0,
+  memory: {
+    rss: 0,
+    heapTotal: 0,
+    heapUsed: 0,
+    external: 0,
+    arrayBuffers: 0,
+    systemTotal: os.totalmem(),
+    systemFree: os.freemem()
+  },
+  traffic: {
+    receivedPerSecond: 0,
+    sentPerSecond: 0,
+    totalReceived: 0,
+    totalSent: 0
+  },
+  sampledAt: null
+};
+
+let lastCpuUsage = process.cpuUsage();
+let lastCpuSampleTime = process.hrtime.bigint();
+let lastTrafficSample = { received: 0, sent: 0, time: Date.now() };
+
+// 每秒采样一次；CPU 百分比按整机核数归一化（0-100）
+function sampleProcessResources() {
+  const nowHr = process.hrtime.bigint();
+  const elapsedUs = Number(nowHr - lastCpuSampleTime) / 1000;
+  const usage = process.cpuUsage(lastCpuUsage);
+  lastCpuUsage = process.cpuUsage();
+  lastCpuSampleTime = nowHr;
+
+  const cpuUs = usage.user + usage.system;
+  const cpuPercent = elapsedUs > 0
+    ? Math.min(100, Math.max(0, (cpuUs / elapsedUs) * 100 / CPU_COUNT))
+    : 0;
+
+  const mem = process.memoryUsage();
+  const now = Date.now();
+  const elapsedSec = (now - lastTrafficSample.time) / 1000;
+  let receivedPerSecond = 0;
+  let sentPerSecond = 0;
+
+  if (elapsedSec > 0) {
+    receivedPerSecond = Math.max(0, (processTraffic.received - lastTrafficSample.received) / elapsedSec);
+    sentPerSecond = Math.max(0, (processTraffic.sent - lastTrafficSample.sent) / elapsedSec);
+  }
+
+  lastTrafficSample = { received: processTraffic.received, sent: processTraffic.sent, time: now };
+
+  resourceSnapshot.cpuPercent = cpuPercent;
+  resourceSnapshot.memory = {
+    rss: mem.rss,
+    heapTotal: mem.heapTotal,
+    heapUsed: mem.heapUsed,
+    external: mem.external,
+    arrayBuffers: mem.arrayBuffers,
+    systemTotal: os.totalmem(),
+    systemFree: os.freemem()
+  };
+  resourceSnapshot.traffic = {
+    receivedPerSecond,
+    sentPerSecond,
+    totalReceived: processTraffic.received,
+    totalSent: processTraffic.sent
+  };
+  resourceSnapshot.sampledAt = new Date(now).toISOString();
+}
+
+sampleProcessResources();
+setInterval(sampleProcessResources, 1000).unref();
 
 // API 英文文案（用于 WebUI 切换到英文时）
 const API_MESSAGES_EN = {
@@ -794,6 +870,7 @@ function createForwardConnection(clientSocket, mapping) {
   // 流量统计
   clientSocket.on('data', (data) => {
     updateActivity();
+    processTraffic.received += data.length;
     const conn = connections.get(connectionId);
     if (conn) {
       conn.bytesReceived += data.length;
@@ -803,6 +880,7 @@ function createForwardConnection(clientSocket, mapping) {
 
   targetSocket.on('data', (data) => {
     updateActivity();
+    processTraffic.sent += data.length;
     const conn = connections.get(connectionId);
     if (conn) {
       conn.bytesSent += data.length;
@@ -1493,7 +1571,19 @@ app.get('/api/status', requireAuth, (req, res) => {
       activeMappings: servers.size,
       totalConnections: connections.size,
       uptime: process.uptime(),
-      memoryUsage: process.memoryUsage()
+      memoryUsage: process.memoryUsage(),
+      resources: {
+        cpuPercent: Number(resourceSnapshot.cpuPercent.toFixed(2)),
+        cpuCount: CPU_COUNT,
+        memory: { ...resourceSnapshot.memory },
+        traffic: {
+          receivedPerSecond: Math.round(resourceSnapshot.traffic.receivedPerSecond),
+          sentPerSecond: Math.round(resourceSnapshot.traffic.sentPerSecond),
+          totalReceived: processTraffic.received,
+          totalSent: processTraffic.sent
+        },
+        sampledAt: resourceSnapshot.sampledAt
+      }
     }
   });
 });

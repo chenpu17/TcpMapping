@@ -470,6 +470,15 @@
 
         .stat-card h3.small {
             font-size: 1.02rem;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            column-gap: 0.5rem;
+            row-gap: 0.1rem;
+        }
+
+        .stat-card h3.small span {
+            white-space: nowrap;
         }
 
         .stat-card p {
@@ -484,6 +493,105 @@
         .stat-card--amber { --accent: var(--amber); --accent-soft: var(--amber-soft); }
         .stat-card--sky { --accent: var(--sky); --accent-soft: var(--sky-soft); }
         .stat-card--violet { --accent: var(--violet); --accent-soft: var(--violet-soft); }
+
+        /* 服务资源 */
+        .resource-sampled {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .live-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 0 4px var(--green-soft);
+            animation: livePulse 2s ease-in-out infinite;
+        }
+
+        @keyframes livePulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.45; }
+        }
+
+        .resource-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 1rem;
+        }
+
+        .resource-card {
+            background: var(--surface-muted);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 1rem 1.1rem;
+        }
+
+        .resource-card-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 0.75rem;
+            margin-bottom: 0.7rem;
+        }
+
+        .resource-label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .resource-value {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--text);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .resource-track {
+            height: 8px;
+            border-radius: 999px;
+            background: var(--border);
+            overflow: hidden;
+        }
+
+        .resource-fill {
+            display: block;
+            width: 0;
+            height: 100%;
+            border-radius: inherit;
+            background: var(--primary);
+            transition: width 0.4s ease;
+        }
+
+        .resource-fill--memory {
+            background: var(--green);
+        }
+
+        .resource-hint {
+            margin-top: 0.6rem;
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .resource-traffic {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 0.4rem 1.4rem;
+            font-family: var(--mono);
+            font-size: 1.02rem;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .resource-traffic .up { color: var(--green); }
+        .resource-traffic .down { color: var(--sky); }
 
         .table-wrap {
             overflow-x: auto;
@@ -938,6 +1046,14 @@
                 grid-template-columns: repeat(2, 1fr);
             }
 
+            .resource-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .resource-card:last-child {
+                grid-column: 1 / -1;
+            }
+
             .card-header {
                 flex-wrap: wrap;
             }
@@ -954,6 +1070,14 @@
 
             .stats-grid {
                 grid-template-columns: 1fr;
+            }
+
+            .resource-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .resource-card:last-child {
+                grid-column: auto;
             }
 
             .card-body {
@@ -1037,6 +1161,57 @@
             <div class="card-body">
                 <div class="stats-grid" id="statsGrid">
                     <!-- 状态卡片将通过JavaScript动态生成 -->
+                </div>
+            </div>
+        </section>
+
+        <!-- 服务资源 -->
+        <section class="card">
+            <div class="card-header">
+                <h2 data-i18n="resources.title">服务资源</h2>
+                <span class="resource-sampled">
+                    <span class="live-dot" aria-hidden="true"></span>
+                    <span id="resourceSampledAt" data-i18n="resources.waiting">等待采样…</span>
+                </span>
+            </div>
+            <div class="card-body">
+                <div class="resource-grid">
+                    <div class="resource-card">
+                        <div class="resource-card-head">
+                            <span class="resource-label" data-i18n="resources.cpu">CPU 使用率</span>
+                            <strong class="resource-value" id="cpuValue">0.0%</strong>
+                        </div>
+                        <div class="resource-track" id="cpuBar" role="progressbar"
+                             data-i18n-aria-label="resources.cpu" aria-label="CPU usage"
+                             aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                            <span class="resource-fill" id="cpuFill"></span>
+                        </div>
+                        <p class="resource-hint" id="cpuHint">—</p>
+                    </div>
+
+                    <div class="resource-card">
+                        <div class="resource-card-head">
+                            <span class="resource-label" data-i18n="resources.memory">内存占用</span>
+                            <strong class="resource-value" id="memoryValue">0 B</strong>
+                        </div>
+                        <div class="resource-track" id="memoryBar" role="progressbar"
+                             data-i18n-aria-label="resources.memory" aria-label="Memory usage"
+                             aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                            <span class="resource-fill resource-fill--memory" id="memoryFill"></span>
+                        </div>
+                        <p class="resource-hint" id="memoryHint">—</p>
+                    </div>
+
+                    <div class="resource-card">
+                        <div class="resource-card-head">
+                            <span class="resource-label" data-i18n="resources.traffic">实时流量</span>
+                        </div>
+                        <div class="resource-traffic">
+                            <span class="up">↑ <strong id="trafficUp">0 B/s</strong></span>
+                            <span class="down">↓ <strong id="trafficDown">0 B/s</strong></span>
+                        </div>
+                        <p class="resource-hint" id="trafficHint">—</p>
+                    </div>
                 </div>
             </div>
         </section>
@@ -1417,6 +1592,66 @@
             return Math.floor(value / 86400) + 'd ' + Math.floor((value % 86400) / 3600) + 'h';
         }
 
+        // 渲染服务进程自身的资源占用（CPU / 内存 / 实时流量）
+        function renderResources() {
+            const resources = status.resources;
+            if (!resources) return;
+
+            const cpuPercent = Math.max(0, Math.min(100, Number(resources.cpuPercent) || 0));
+            const cpuValue = document.getElementById('cpuValue');
+            const cpuFill = document.getElementById('cpuFill');
+            const cpuBar = document.getElementById('cpuBar');
+            const cpuHint = document.getElementById('cpuHint');
+            if (cpuValue) cpuValue.textContent = cpuPercent.toFixed(1) + '%';
+            if (cpuFill) cpuFill.style.width = cpuPercent + '%';
+            if (cpuBar) cpuBar.setAttribute('aria-valuenow', cpuPercent.toFixed(1));
+            if (cpuHint) cpuHint.textContent = t('resources.cpuHint', { count: resources.cpuCount || 1 });
+
+            const memory = resources.memory || {};
+            const rss = Number(memory.rss) || 0;
+            const systemTotal = Number(memory.systemTotal) || 0;
+            const memoryPercent = systemTotal > 0 ? Math.min(100, (rss / systemTotal) * 100) : 0;
+            const memoryValue = document.getElementById('memoryValue');
+            const memoryFill = document.getElementById('memoryFill');
+            const memoryBar = document.getElementById('memoryBar');
+            const memoryHint = document.getElementById('memoryHint');
+            if (memoryValue) memoryValue.textContent = formatBytes(rss);
+            if (memoryFill) memoryFill.style.width = memoryPercent + '%';
+            if (memoryBar) memoryBar.setAttribute('aria-valuenow', memoryPercent.toFixed(1));
+            if (memoryHint) {
+                memoryHint.textContent = t('resources.memoryHint', {
+                    percent: memoryPercent.toFixed(1),
+                    heap: formatBytes(memory.heapUsed)
+                });
+            }
+
+            const traffic = resources.traffic || {};
+            const up = Number(traffic.receivedPerSecond) || 0;
+            const down = Number(traffic.sentPerSecond) || 0;
+            const trafficUp = document.getElementById('trafficUp');
+            const trafficDown = document.getElementById('trafficDown');
+            const trafficHint = document.getElementById('trafficHint');
+            if (trafficUp) trafficUp.textContent = formatBytes(up) + '/s';
+            if (trafficDown) trafficDown.textContent = formatBytes(down) + '/s';
+            if (trafficHint) {
+                trafficHint.textContent = t('resources.trafficHint', {
+                    up: formatBytes(traffic.totalReceived),
+                    down: formatBytes(traffic.totalSent)
+                });
+            }
+
+            const sampledAt = document.getElementById('resourceSampledAt');
+            if (sampledAt) {
+                if (resources.sampledAt) {
+                    const locale = I18n.getLanguage() === 'en-US' ? 'en-US' : 'zh-CN';
+                    const time = new Date(resources.sampledAt).toLocaleTimeString(locale, { hour12: false });
+                    sampledAt.textContent = t('resources.sampledAt', { time });
+                } else {
+                    sampledAt.textContent = t('resources.waiting');
+                }
+            }
+        }
+
         // 渲染端口映射列表
         function renderMappings() {
             const tbody = document.getElementById('mappingsTable');
@@ -1661,11 +1896,13 @@
                         </svg>
                     </div>
                     <div>
-                        <h3 class="small">↑${formatBytes(totalUp)} ↓${formatBytes(totalDown)}</h3>
+                        <h3 class="small"><span>↑${formatBytes(totalUp)}</span><span>↓${formatBytes(totalDown)}</span></h3>
                         <p>${escapeHtml(t('stats.totalTraffic'))}</p>
                     </div>
                 </div>
             `;
+
+            renderResources();
         }
 
         function showAddMappingModal() {

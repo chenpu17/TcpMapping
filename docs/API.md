@@ -25,7 +25,7 @@ GET /api/health
 ```json
 {
   "status": "ok",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "timestamp": "2025-12-08T08:30:00.000Z",
   "uptime": 3600,
   "activeMappings": 3,
@@ -396,7 +396,7 @@ GET /api/status
 {
   "success": true,
   "data": {
-    "version": "2.3.0",
+    "version": "2.4.0",
     "username": "admin",
     "totalMappings": 3,
     "activeMappings": 3,
@@ -408,10 +408,46 @@ GET /api/status
       "heapUsed": 8239376,
       "external": 2104438,
       "arrayBuffers": 18635
+    },
+    "resources": {
+      "cpuPercent": 1.25,
+      "cpuCount": 8,
+      "memory": {
+        "rss": 51544064,
+        "heapTotal": 10272768,
+        "heapUsed": 8239376,
+        "external": 2104438,
+        "arrayBuffers": 18635,
+        "systemTotal": 17179869184,
+        "systemFree": 4294967296
+      },
+      "traffic": {
+        "receivedPerSecond": 20480,
+        "sentPerSecond": 18240,
+        "totalReceived": 104857600,
+        "totalSent": 99614720
+      },
+      "sampledAt": "2025-12-08T08:30:00.000Z"
     }
   }
 }
 ```
+
+**`resources` 字段说明**:
+
+| 字段 | 说明 |
+|------|------|
+| `cpuPercent` | 服务进程 CPU 使用率，已按核心数归一化到 0-100（占整机比例），每秒采样一次 |
+| `cpuCount` | 可用 CPU 核心数 |
+| `memory.rss` | 进程常驻内存（RSS） |
+| `memory.heapUsed` / `heapTotal` | V8 堆已用 / 已申请内存 |
+| `memory.systemTotal` / `systemFree` | 系统总内存 / 当前可用内存，用于计算进程占系统内存的比例 |
+| `traffic.receivedPerSecond` | 实时上行速率（客户端 → 目标），字节/秒，按采样间隔计算 |
+| `traffic.sentPerSecond` | 实时下行速率（目标 → 客户端），字节/秒 |
+| `traffic.totalReceived` / `totalSent` | 进程启动以来的累计上下行流量，映射被删除后仍然保留 |
+| `sampledAt` | 最近一次采样时间（ISO 8601） |
+
+> 资源数据由进程内每秒采样器维护；`cpuPercent` 是整机占比（单核满载为 `100 / cpuCount`%），不是单核使用率。
 
 ---
 
