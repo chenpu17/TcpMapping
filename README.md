@@ -31,6 +31,14 @@ tcpmapping init             # Create config file | 创建配置文件
 tcpmapping start            # Start server | 启动服务
 ```
 
+To allow remote access on port 5000 | 如需对外提供 5000 端口访问：
+
+```bash
+tcpmapping setup-password
+tcpmapping init  --host 0.0.0.0 --port 5000
+tcpmapping start --host 0.0.0.0 --port 5000
+```
+
 ### Local Install | 本地安装
 
 ```bash
@@ -55,6 +63,23 @@ npm start
 | `tcpmapping logs -f` | Follow logs in real-time | 实时跟踪日志 |
 | `tcpmapping setup-password` | Set admin password | 设置管理员密码 |
 | `tcpmapping init` | Create config file | 创建配置文件 |
+
+### CLI Options | 命令行选项
+
+| Option | Description |
+|--------|-------------|
+| `-p, --port <port>` | WebUI port (default: 9999) | WebUI端口（默认9999） |
+| `-H, --host <host>` | Listen address (default: 127.0.0.1, use 0.0.0.0 for remote access) | 监听地址（默认127.0.0.1，远程访问用0.0.0.0） |
+
+Options apply to `start`, `restart`, `status` and `init`, and take precedence over environment variables and `config.json`.
+
+选项对 `start`、`restart`、`status`、`init` 生效，优先级高于环境变量和 `config.json`。
+
+```bash
+tcpmapping start --host 0.0.0.0 --port 5000   # Public access on port 5000 | 对外监听 5000
+tcpmapping status --port 5000                 # Check that instance | 查看该实例状态
+tcpmapping restart --port 5000                # Restart with the same port | 以该端口重启
+```
 
 ---
 
@@ -83,9 +108,9 @@ After starting, visit **http://localhost:9999**
 
 Default username | 默认用户名: `admin`
 
-> For security, the WebUI listens on `127.0.0.1` by default. To access it from another machine, set `webui.host` to `0.0.0.0` in `config.json` and restrict access with a firewall.
+> For security, the WebUI listens on `127.0.0.1` by default. To access it from another machine, start with `--host 0.0.0.0` (or set `webui.host` in `config.json`) and restrict access with a firewall.
 >
-> 出于安全考虑，WebUI 默认只监听 `127.0.0.1`。如需远程访问，请将 `config.json` 中的 `webui.host` 改为 `0.0.0.0`，并通过防火墙限制访问来源。
+> 出于安全考虑，WebUI 默认只监听 `127.0.0.1`。如需远程访问，请使用 `--host 0.0.0.0` 启动（或修改 `config.json` 中的 `webui.host`），并通过防火墙限制访问来源。公网部署请务必设置强密码，建议使用 HTTPS 反向代理。
 
 ---
 
@@ -146,6 +171,10 @@ For remote WebUI access, set `webui.host` to `"0.0.0.0"` and protect the port wi
 | `WEBUI_PORT` | Override the WebUI port | 覆盖WebUI端口 |
 | `WEBUI_HOST` | Override the WebUI bind address | 覆盖WebUI监听地址 |
 | `SESSION_SECRET` | Override the session secret | 覆盖会话密钥 |
+
+Priority | 优先级: CLI options > environment variables > `config.json` default.
+
+优先级：命令行选项 > 环境变量 > `config.json` 默认值。
 
 ---
 
@@ -223,9 +252,13 @@ tcpmapping status
 
 ### Port already in use? | 端口被占用？
 
-Edit `webui.port` or `mappings[].listen.port` in config.json.
+Start with another port, or edit `webui.port` / `mappings[].listen.port` in config.json.
 
-修改 config.json 中的 `webui.port` 或 `mappings[].listen.port`。
+使用 `--port` 指定其他端口启动，或修改 config.json 中的 `webui.port` / `mappings[].listen.port`。
+
+```bash
+tcpmapping restart --port 8080
+```
 
 ---
 

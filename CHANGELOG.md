@@ -1,5 +1,21 @@
 # Changelog
 
+## v2.4.1
+
+### 新增
+
+- CLI 支持 `-p, --port <port>` 与 `-H, --host <host>` 选项，可直接指定 WebUI 端口和监听地址：
+  - `tcpmapping start --host 0.0.0.0 --port 5000` 直接对外提供服务；
+  - 选项对 `start`、`restart`、`status`、`init` 生效；
+  - 优先级：命令行选项 > 环境变量 > `config.json`。
+- 监听 `0.0.0.0` 时，启动输出会列出 `localhost` 与本机局域网 IPv4 访问地址。
+- 新增 `--listen` 作为 `--host` 的别名，便于记忆。
+
+### 修复
+
+- 使用 `WEBUI_PORT` / `WEBUI_HOST` 启动时，CLI 输出的 WebUI 地址未反映环境变量，导致提示端口与实际监听端口不一致。
+- `init --host/--port` 现在会将指定值写入生成的 `config.json`。
+
 ## v2.4.0
 
 ### 新增

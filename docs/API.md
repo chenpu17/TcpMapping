@@ -25,7 +25,7 @@ GET /api/health
 ```json
 {
   "status": "ok",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "timestamp": "2025-12-08T08:30:00.000Z",
   "uptime": 3600,
   "activeMappings": 3,
@@ -396,7 +396,7 @@ GET /api/status
 {
   "success": true,
   "data": {
-    "version": "2.4.0",
+    "version": "2.4.1",
     "username": "admin",
     "totalMappings": 3,
     "activeMappings": 3,

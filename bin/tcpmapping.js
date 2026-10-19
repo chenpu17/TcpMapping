@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const http = require('http');
+const net = require('net');
 
 const APP_NAME = 'tcpmapping';
 const DATA_DIR = process.env.TCPMAPPING_DATA_DIR || path.join(os.homedir(), '.tcpmapping');
@@ -13,9 +14,44 @@ const LOG_FILE = path.join(DATA_DIR, 'tcpmapping.log');
 const SERVER_FILE = path.join(__dirname, '..', 'server.js');
 const SETUP_PASSWORD_FILE = path.join(__dirname, '..', 'setup-password.js');
 
-// 获取命令行参数
-const args = process.argv.slice(2);
+// 解析命令行参数
+function parseArgs(argv) {
+  const options = { port: null, host: null };
+  const positional = [];
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+
+    if (arg === '--port' || arg === '-p') {
+      options.port = argv[++i];
+    } else if (arg.startsWith('--port=')) {
+      options.port = arg.slice('--port='.length);
+    } else if (arg === '--host' || arg === '-H' || arg === '--listen') {
+      options.host = argv[++i];
+    } else if (arg.startsWith('--host=')) {
+      options.host = arg.slice('--host='.length);
+    } else if (arg.startsWith('--listen=')) {
+      options.host = arg.slice('--listen='.length);
+    } else {
+      positional.push(arg);
+    }
+  }
+
+  return { options, positional };
+}
+
+const { options: webuiOptions, positional: args } = parseArgs(process.argv.slice(2));
 const command = args[0] || 'help';
+
+if (webuiOptions.port !== null && !isValidPort(webuiOptions.port)) {
+  console.error(`无效的端口: ${webuiOptions.port}（应为 1-65535）`);
+  process.exit(1);
+}
+
+if (webuiOptions.host !== null && !isValidHost(webuiOptions.host)) {
+  console.error(`无效的监听地址: ${webuiOptions.host}`);
+  process.exit(1);
+}
 
 // 颜色输出（非 TTY 或设置了 NO_COLOR 时自动关闭）
 const useColor = Boolean(process.stdout.isTTY) && !process.env.NO_COLOR;
@@ -82,15 +118,51 @@ function getAuthConfigPath() {
   return null;
 }
 
-// 获取 WebUI 访问信息
+// 验证端口
+function isValidPort(port) {
+  const p = Number(port);
+  return Number.isInteger(p) && p >= 1 && p <= 65535;
+}
+
+// 验证 IP 地址或主机名（与 server.js 保持一致）
+function isValidHost(host) {
+  if (!host || typeof host !== 'string') return false;
+
+  const value = host.trim();
+  if (!value || value.length > 253) return false;
+  if (net.isIP(value)) return true;
+
+  const hostnamePattern = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+  return hostnamePattern.test(value);
+}
+
+// 获取 WebUI 访问信息（优先级：命令行参数 > 环境变量 > 配置文件）
 function getWebuiInfo() {
   const config = readConfig().data;
   const webui = (config && config.webui) || {};
 
+  let host = webui.host || '127.0.0.1';
+  let port = Number(webui.port) || 9999;
+
+  if (process.env.WEBUI_PORT && isValidPort(process.env.WEBUI_PORT)) {
+    port = Number(process.env.WEBUI_PORT);
+  }
+  if (process.env.WEBUI_HOST && isValidHost(process.env.WEBUI_HOST)) {
+    host = process.env.WEBUI_HOST.trim();
+  }
+
+  // 命令行参数优先级最高
+  if (webuiOptions.port !== null) {
+    port = Number(webuiOptions.port);
+  }
+  if (webuiOptions.host !== null) {
+    host = webuiOptions.host.trim();
+  }
+
   return {
     enabled: webui.enabled !== false,
-    host: webui.host || '127.0.0.1',
-    port: Number(webui.port) || 9999
+    host,
+    port
   };
 }
 
@@ -103,6 +175,24 @@ function getAccessHost(host) {
     return `[${host}]`;
   }
   return host;
+}
+
+// 列出可访问地址（监听所有网卡时包含本机局域网 IP，便于远程访问）
+function getAccessHosts(host) {
+  if (host !== '0.0.0.0' && host !== '::') {
+    return [getAccessHost(host)];
+  }
+
+  const hosts = ['localhost'];
+  const interfaces = os.networkInterfaces();
+  for (const entries of Object.values(interfaces)) {
+    for (const entry of entries || []) {
+      if (entry.family === 'IPv4' && !entry.internal) {
+        hosts.push(entry.address);
+      }
+    }
+  }
+  return hosts;
 }
 
 // 检查进程是否存在
@@ -172,6 +262,7 @@ async function start() {
   const pid = isRunning();
   if (pid) {
     console.log(colors.yellow(`${APP_NAME} 已在运行 (PID: ${pid})`));
+    console.log(colors.gray('如需修改端口或监听地址，请使用: tcpmapping restart --port <port> --host <host>'));
     return;
   }
 
@@ -184,6 +275,9 @@ async function start() {
   ensureDataDir();
   console.log(colors.blue(`正在启动 ${APP_NAME}...`));
 
+  // 将生效的 WebUI 地址显式传给子进程，确保实际监听与提示一致
+  const webui = getWebuiInfo();
+
   const out = fs.openSync(LOG_FILE, 'a');
   const err = fs.openSync(LOG_FILE, 'a');
 
@@ -193,7 +287,12 @@ async function start() {
       detached: true,
       stdio: ['ignore', out, err],
       // 使用当前目录，以便 server 可以找到当前目录的 config.json
-      cwd: process.cwd()
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        WEBUI_HOST: webui.host,
+        WEBUI_PORT: String(webui.port)
+      }
     });
   } finally {
     // 子进程已继承文件描述符，父进程可以关闭
@@ -224,10 +323,10 @@ async function start() {
     return;
   }
 
-  const webui = getWebuiInfo();
   console.log(colors.green(`${APP_NAME} 启动成功 (PID: ${child.pid})`));
   if (webui.enabled) {
-    console.log(colors.cyan(`WebUI: http://${getAccessHost(webui.host)}:${webui.port}`));
+    const urls = getAccessHosts(webui.host).map(host => `http://${host}:${webui.port}`);
+    console.log(colors.cyan(`WebUI: ${urls.join('\n       ')}`));
     if (webui.host === '0.0.0.0' || webui.host === '::') {
       console.log(colors.yellow('提示: WebUI 监听在所有网卡上，请确保使用强密码'));
     }
@@ -335,7 +434,7 @@ async function status() {
       const health = await fetchHealth(host, webui.port);
 
       if (health) {
-        console.log(`  WebUI: http://${getAccessHost(webui.host)}:${webui.port}`);
+        console.log(`  WebUI: ${getAccessHosts(webui.host).map(item => `http://${item}:${webui.port}`).join('  ')}`);
         console.log(`  运行时间: ${Math.floor(health.uptime / 60)} 分钟`);
         console.log(`  活跃映射: ${health.activeMappings}`);
         console.log(`  活跃连接: ${health.activeConnections}`);
@@ -463,9 +562,9 @@ function init() {
     mappings: [],
     webui: {
       enabled: true,
-      // 默认只监听本机；如需远程访问管理面板，请改为 "0.0.0.0" 并配置防火墙
-      host: '127.0.0.1',
-      port: 9999
+      // 默认只监听本机；如需远程访问管理面板，请使用 --host 0.0.0.0 并配置防火墙
+      host: webuiOptions.host ? webuiOptions.host.trim() : '127.0.0.1',
+      port: webuiOptions.port !== null ? Number(webuiOptions.port) : 9999
     },
     logging: {
       enabled: true,
@@ -496,7 +595,7 @@ function help() {
 ${colors.cyan('TCP Mapping Server')} - TCP端口转发服务器
 
 ${colors.yellow('用法:')}
-  tcpmapping <command>
+  tcpmapping <command> [options]
 
 ${colors.yellow('命令:')}
   ${colors.green('start')}           后台启动服务
@@ -510,18 +609,29 @@ ${colors.yellow('命令:')}
   ${colors.green('version')}         显示版本
   ${colors.green('help')}            显示帮助
 
+${colors.yellow('选项:')}
+  ${colors.green('-p, --port <port>')}   WebUI 端口（默认 9999）
+  ${colors.green('-H, --host <host>')}   监听地址（默认 127.0.0.1；公网访问用 0.0.0.0，别名 --listen）
+
+  选项对 start / restart / status / init 生效，优先级高于环境变量和配置文件。
+
 ${colors.yellow('配置路径（按优先级）:')}
   1. ./config.json       当前目录（项目配置）
   2. ~/.tcpmapping/      用户数据目录（全局配置）
 
+${colors.yellow('环境变量:')}
+  WEBUI_PORT / WEBUI_HOST  等效于 --port / --host
+
 ${colors.yellow('示例:')}
-  tcpmapping init             # 创建配置文件
-  tcpmapping setup-password   # 设置管理员密码
-  tcpmapping start            # 启动服务
-  tcpmapping status           # 查看状态和配置路径
+  tcpmapping init --host 0.0.0.0 --port 5000   # 初始化并允许远程访问
+  tcpmapping setup-password                    # 设置管理员密码
+  tcpmapping start --host 0.0.0.0 --port 5000  # 对外监听 5000 端口
+  tcpmapping status --port 5000                # 查看 5000 端口上的服务状态
+  tcpmapping restart --port 5000               # 以新端口重启
 
 ${colors.yellow('WebUI:')}
-  启动后访问 http://localhost:9999（默认仅本机可访问）
+  默认访问 http://localhost:9999；使用 --host 0.0.0.0 后可通过公网 IP 访问，
+  请务必设置强密码，并建议配合防火墙或 HTTPS 反向代理使用。
 `);
 }
 
