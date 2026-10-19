@@ -64,6 +64,23 @@ After starting, visit **http://localhost:9999**
 
 启动后访问 **http://localhost:9999**
 
+### Screenshots | 界面预览
+
+![管理面板 · 中文浅色 | Dashboard · Chinese light](docs/screenshots/dashboard-zh-light.webp)
+
+| English · Dark | Mobile · 中文 |
+|:---:|:---:|
+| ![English dark dashboard](docs/screenshots/dashboard-en-dark.webp) | ![移动端资源面板](docs/screenshots/dashboard-mobile-zh.webp) |
+
+<details>
+<summary>Login page | 登录页</summary>
+
+![登录页](docs/screenshots/login-zh-light.webp)
+
+</details>
+
+> Screenshots use demo data from an isolated instance | 截图使用独立演示实例的数据
+
 Default username | 默认用户名: `admin`
 
 > For security, the WebUI listens on `127.0.0.1` by default. To access it from another machine, set `webui.host` to `0.0.0.0` in `config.json` and restrict access with a firewall.
